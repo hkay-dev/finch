@@ -1,0 +1,18 @@
+Finch
+Copyright 2026 Harsha Kotcherlakota
+
+This product includes software developed by others, vendored in vendor/ with
+local changes. Each folder keeps its upstream license, and its PATCHED.md lists
+what was changed:
+
+- vendor/gpui-pre, vendor/gpui-pre-apple, vendor/gpui-pre-macos: GPUI, from Zed
+  (https://github.com/zed-industries/zed). Copyright 2022 - 2025 Zed Industries,
+  Inc. Apache License 2.0.
+- vendor/gpui-base, vendor/gpui-component: GPUI Kit
+  (https://github.com/longbridge/gpui-kit). Copyright 2024 - 2026 Longbridge.
+  Apache License 2.0.
+- vendor/markdown: markdown-rs (https://github.com/wooorm/markdown-rs).
+  Copyright Titus Wormer. MIT License.
+- vendor/block: rust-block (https://github.com/SSheldon/rust-block).
+  Copyright Steven Sheldon. MIT License.
+- vendor/pele: pele. Copyright 2026 kepano. MIT License.

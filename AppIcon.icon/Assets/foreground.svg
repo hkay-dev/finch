@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+<defs>
+<linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe36b"/><stop offset="1" stop-color="#f2a91a"/></linearGradient>
+<linearGradient id="beam" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#d5e2f7"/></linearGradient>
+</defs>
+<g id="foreground">
+<rect x="412" y="476" width="200" height="50" rx="25" fill="url(#beam)"/>
+<rect x="487" y="476" width="50" height="370" rx="25" fill="url(#beam)"/>
+<rect x="412" y="796" width="200" height="50" rx="25" fill="url(#beam)"/>
+<g transform="translate(-102 -32) scale(1.12)">
+<path d="M486 418 v40 M550 418 v40" stroke="#5a3a12" stroke-width="16" stroke-linecap="round"/>
+<path d="M650 330 L812 248 L806 318 L690 392 Z" fill="#1d1e26"/>
+<ellipse cx="540" cy="350" rx="166" ry="108" fill="url(#body)"/>
+<circle cx="420" cy="284" r="88" fill="url(#body)"/>
+<path d="M346 262 L284 292 L350 318 Z" fill="#f08a2c"/>
+<path d="M336 262 C346 206 392 186 434 192 C470 198 494 222 500 252 C466 236 420 238 384 252 C368 258 352 262 336 262 Z" fill="#1d1e26"/>
+<circle cx="400" cy="288" r="15" fill="#1d1e26"/>
+<path d="M478 330 C540 296 650 296 728 326 C660 382 580 404 520 398 C488 392 472 362 478 330 Z" fill="#1d1e26"/>
+</g>
+</g>
+</svg>

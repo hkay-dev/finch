@@ -1,0 +1,4 @@
+# Every Apple Silicon Mac can run the build. A machine-specific target (say apple-m5) goes in
+# CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS for local builds.
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "target-cpu=apple-m1"]

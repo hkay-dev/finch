@@ -1,0 +1,104 @@
+[package]
+name = "finch"
+version = "0.1.0"
+edition = "2024"
+description = "A small, fast text editor for the Mac on GPUI"
+license = "Apache-2.0"
+repository = "https://github.com/hkay-dev/finch"
+authors = ["Harsha Kotcherlakota"]
+publish = false
+
+[dependencies]
+# Default features (component + assets) plus tree-sitter highlighting for every
+# language src/language.rs maps (all the vendored highlighter has but JSDoc); JSON
+# comes with the base `tree-sitter` feature.
+gpui-kit = { version = "=0.8.1", features = [
+    "tree-sitter",
+    "tree-sitter-astro",
+    "tree-sitter-bash",
+    "tree-sitter-c",
+    "tree-sitter-cmake",
+    "tree-sitter-cpp",
+    "tree-sitter-csharp",
+    "tree-sitter-css",
+    "tree-sitter-diff",
+    "tree-sitter-ejs",
+    "tree-sitter-elixir",
+    "tree-sitter-erb",
+    "tree-sitter-go",
+    "tree-sitter-graphql",
+    "tree-sitter-html",
+    "tree-sitter-java",
+    "tree-sitter-javascript",
+    "tree-sitter-kotlin",
+    "tree-sitter-lua",
+    "tree-sitter-make",
+    "tree-sitter-markdown",
+    "tree-sitter-php",
+    "tree-sitter-proto",
+    "tree-sitter-python",
+    "tree-sitter-ruby",
+    "tree-sitter-rust",
+    "tree-sitter-scala",
+    "tree-sitter-svelte",
+    "tree-sitter-swift",
+    "tree-sitter-toml",
+    "tree-sitter-tsx",
+    "tree-sitter-typescript",
+    "tree-sitter-yaml",
+    "tree-sitter-zig",
+] }
+chardetng = "0.1"
+data-url = "0.3"
+encoding_rs = "0.8"
+futures-channel = "0.3"
+# The Metal renderer and text system under gpui-pre, vendored for text
+# rendering (vendor/gpui-pre-apple/PATCHED.md). Named here so the app can set
+# `gpui_apple::text_tuning`.
+gpui-pre-apple = "=0.3.10"
+# Raw bitmap frames for the explorer's icons (src/explorer/icons.rs); gpui's own version.
+image = { version = "0.25", default-features = false }
+# The type a hover provider answers in (marks.rs); the version the vendored editor uses.
+lsp-types = { version = "0.97.0", features = ["proposed"] }
+ignore = "0.4"
+notify = "8"
+# Native window bits GPUI doesn't set (src/window_look.rs).
+objc2 = "0.6"
+raw-window-handle = "0.6"
+# LaTeX math to SVG paths for the preview (src/preview/math.rs); 3.x needs rustc 1.99.
+latex-rust = "2.1"
+markdown = "1"
+# Line diff for the Compare view (src/compare.rs); same version and features as gpui-component's.
+similar = { version = "2.7", features = ["unicode"] }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+toml_edit = "0.22"
+# The highlighter's parse tree, read by src/config_check.rs and src/config_path.rs (same
+# crate the highlighter uses; the grammars are dev-only, for those modules' tests).
+tree-sitter = "0.26"
+
+[dev-dependencies]
+tree-sitter-json = "0.24"
+tree-sitter-toml-ng = "0.7"
+tree-sitter-yaml = "0.7"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+
+# Agent builds: release code without LTO, incremental. Measure with `release`.
+[profile.fast]
+inherits = "release"
+lto = "off"
+codegen-units = 16
+incremental = true
+
+[patch.crates-io]
+gpui-pre-apple = { path = "vendor/gpui-pre-apple" }
+gpui-base = { path = "vendor/gpui-base" }
+gpui-component = { path = "vendor/gpui-component" }
+gpui-pre = { path = "vendor/gpui-pre" }
+gpui-pre-macos = { path = "vendor/gpui-pre-macos" }
+markdown = { path = "vendor/markdown" }
+block = { path = "vendor/block" }
