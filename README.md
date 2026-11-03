@@ -34,14 +34,10 @@ Finch is for writing, whether that's jotting down a quick note or editing a Mark
 
 ## What it does
 
-### Writing
-
-- A live Markdown preview beside the text, with GFM tables, task lists, callouts, footnotes, math, Mermaid diagrams and note links (`[[...]]`). It scrolls with the editor and can export to HTML.
-- Spelling, a style check, smart punctuation and a writing goal with a progress line under the text.
-- Typewriter scrolling, a reading column, a Focus mode that dims everything but the sentence, line or paragraph you're in, and a Minimal mode that hides everything but the text.
-- Templates for new pages, pasted and dropped images saved next to the note, and reading aloud.
-
-### Code
+- **Writing:** a live Markdown preview (tables, callouts, math, Mermaid), Typewriter and Focus modes, spelling and a style check.
+- **Files:** a folder tree, Open quickly, tabs and split panes.
+- **Code:** code colors for 34 languages, Find in folder, multiple cursors and folding.
+- **Your text is kept:** every Untitled page is saved as a draft, and every save keeps a copy that you can compare with.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme-code-dark.png">
@@ -49,26 +45,7 @@ Finch is for writing, whether that's jotting down a quick note or editing a Mark
   <img alt="A Rust file in Finch with its code colors" src="docs/assets/readme-code-dark.png">
 </picture>
 
-- Code colors for 34 languages through tree-sitter, picked from the file name, a `#!` line or a modeline, with a choice of color schemes and rainbow brackets.
-- Find and Replace with regex and Ignore diacritics, Find in folder, Go to line and Go to symbol.
-- Multiple cursors, git change bars in the gutter, folding, color swatches for color values, and checks that flag a JSON, TOML or YAML file that stops parsing.
-- A log file that keeps growing keeps its last line in view.
-
-### Files and tabs
-
-- A folder tree with git status, sorting, a filter, drag and drop, and file actions (new, rename, duplicate, move, trash) that Undo takes back.
-- Open quickly finds any file under the folder by name.
-- Tabs that fit their names, pinned tabs, a list of every tab when they don't fit, and panes split right or down.
-- A scratch window that drops down from the top of the screen from any app (Control-Option-Space).
-
-### Your text is kept
-
-- Every Untitled page is a file in `~/Documents/Scrap Drafts`, written half a second after you stop typing, so a quit or a crash keeps it.
-- Each save keeps a copy of the file. Browse the copies and compare any of them with your text side by side, then take the lines you want.
-- An Undo history slider scrubs back through the session's edits.
-- When a file changes on disk under your edits, Finch says so and lets you compare before anything is replaced.
-
-The full user guide is in [docs/guide](docs/guide/index.md). In the app, Finch Help (Cmd-?) opens it.
+The rest is in the [user guide](docs/guide/index.md), which Finch Help (Cmd-?) opens in the app.
 
 ## Speed
 
