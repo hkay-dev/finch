@@ -963,8 +963,9 @@ impl Motion {
     fn hidden_mark(&self, at: f32) -> bool {
         let view = self.width.get();
         let (gap, slot) = (f32::from(TAB_GAP), f32::from(TAB_TRAIL_SLOT));
-        // The pinned tabs hold the strip's left, so they are never out of view and the rest scroll under them.
-        let held: f32 = self.slots.iter().filter(|tab| !tab.leaving && tab.label.pinned).map(|tab| tab.level * (tab.w + gap)).sum();
+        // The pinned tabs hold the strip's left (with the room before them), so they are never out of view and the rest scroll under them.
+        let pinned: f32 = self.slots.iter().filter(|tab| !tab.leaving && tab.label.pinned).map(|tab| tab.level * (tab.w + gap)).sum();
+        let held = if pinned > 0. { f32::from(TAB_PLATE_ROOM) + pinned } else { 0. };
         view > 0.
             && self.slots.iter().filter(|tab| !tab.leaving && !tab.label.pinned && (tab.label.dirty || tab.label.conflict || tab.label.gone)).any(|tab| {
                 // The mark sits in the slot after the title, at the tab's right end.
@@ -1098,20 +1099,21 @@ impl Motion {
             return None;
         }
         self.reveal = false;
-        let gap = f32::from(TAB_GAP);
+        let (gap, edge) = (f32::from(TAB_GAP), f32::from(TAB_PLATE_ROOM));
         // Each live tab's room in the strip once it settles: its own width, fitted to the strip, and its gap.
-        let units: Vec<(EntityId, f32)> = self.slots.iter().filter(|slot| !slot.leaving).map(|slot| (slot.label.id, slot.settled(view - gap) + gap)).collect();
+        let units: Vec<(EntityId, f32)> = self.slots.iter().filter(|slot| !slot.leaving).map(|slot| (slot.label.id, slot.settled(view - gap - edge * 2.) + gap)).collect();
         let ix = units.iter().position(|(id, _)| Some(*id) == self.active)?;
         let pinned = self.slots.iter().filter(|slot| !slot.leaving && slot.label.pinned).count();
         if ix < pinned {
             return None;
         }
-        let left: f32 = units[..ix].iter().map(|(_, unit)| unit).sum();
+        // The tabs start `TAB_PLATE_ROOM` into the strip's content and end as far before its end.
+        let left: f32 = edge + units[..ix].iter().map(|(_, unit)| unit).sum::<f32>();
         let right = left + units[ix].1 - gap;
         // Where a fade lies over the strip's end (more tabs past it), a tab under it is not in view; a strip with little room beside the tab has less of it.
-        let held: f32 = units[..pinned].iter().map(|(_, unit)| unit).sum();
+        let held: f32 = if pinned > 0 { edge + units[..pinned].iter().map(|(_, unit)| unit).sum::<f32>() } else { 0. };
         let inset = f32::from(REVEAL_INSET).min((view - held - (units[ix].1 - gap)).max(0.) / 2.);
-        let max = (units.iter().map(|(_, unit)| unit).sum::<f32>() - view).max(0.);
+        let max = (edge * 2. + units.iter().map(|(_, unit)| unit).sum::<f32>() - view).max(0.);
         let (clear_left, clear_right) = (if at > 0.5 { inset } else { 0. }, if at < max - 0.5 { inset } else { 0. });
         if left >= at + held + clear_left && right <= at + view - clear_right {
             return None;
@@ -1275,11 +1277,12 @@ impl Motion {
             }
         }
 
-        // Layout: each tab takes its level of its own width, fitted to the strip's room, and its gap.
-        let gap = f32::from(TAB_GAP);
+        // Layout: each tab takes its level of its own width, fitted to the strip's room, and its gap. The tabs start
+        // `TAB_PLATE_ROOM` in and end as far before the content's end, so the scroll's clip never cuts the plate's rim and shadow.
+        let (gap, edge) = (f32::from(TAB_GAP), f32::from(TAB_PLATE_ROOM));
         let width = (self.width.get() + self.list_reserved.get() - self.list_level.get() * f32::from(ICON_BUTTON + TAB_LIST_GAP)).max(0.);
-        let room = if width > 0. { width - gap } else { f32::MAX };
-        let mut x = 0.;
+        let room = if width > 0. { width - gap - edge * 2. } else { f32::MAX };
+        let mut x = edge;
         let mut live = 0;
         for slot in &mut self.slots {
             // A tab's content eases to a new title's width, and its mark's slot opens or shuts beside it; the strip's room fits it
@@ -1317,7 +1320,7 @@ impl Motion {
             room.x = x;
             x += room.level * (f32::from(TAB_DROP_ROOM) + gap);
         }
-        self.content = x;
+        self.content = x + edge;
         self.reordered = false;
 
         let target = self
@@ -1672,7 +1675,7 @@ pub fn render(
     // The pinned tabs' layer sits `held` points in from the strip's content, which is how far the strip is scrolled, so they stay where they are
     // while the rest scroll under it. Once scrolled it is opaque, with its own copy of the mark (the strip's is under it).
     let held = (-f32::from(scroll.offset().x)).max(0.);
-    let pinned_width: f32 = if stuck.is_empty() { 0. } else { motion.slots.iter().filter(|slot| slot.label.pinned).map(|slot| slot.level * (slot.w + gap)).sum() };
+    let pinned_width: f32 = if stuck.is_empty() { 0. } else { f32::from(TAB_PLATE_ROOM) + motion.slots.iter().filter(|slot| slot.label.pinned).map(|slot| slot.level * (slot.w + gap)).sum::<f32>() };
     let band_ground = crate::tokens::tab_band_ground(light);
     let pinned_layer = (!stuck.is_empty()).then(|| {
         div()
@@ -1682,6 +1685,7 @@ pub fn render(
             .w(px(pinned_width))
             .h(TAB_HEIGHT + TAB_PLATE_ROOM * 2.)
             .py(TAB_PLATE_ROOM)
+            .pl(TAB_PLATE_ROOM)
             .flex()
             .overflow_hidden()
             .when(held > 0., |layer| layer.bg(band_ground).child(mark_shape()))
@@ -1791,7 +1795,8 @@ pub fn render(
         .h(band)
         .flex()
         .items_center()
-        .pl(left_inset)
+        // The strip starts `TAB_PLATE_ROOM` early, since its tabs start that far into it.
+        .pl((left_inset - TAB_PLATE_ROOM).max(px(0.)))
         // Room for the window's preview button at the right edge only where it sits over this bar.
         .pr(right)
         // A light theme's band is a step under the page, so the active tab's white plate reads on it.
@@ -1838,7 +1843,10 @@ pub fn render(
                 .children(crate::control::fresh("tab-close:"))
                 .children(crate::control::fresh("tab-title:"))
                 .child(mark)
+                // The room at each end the layout keeps clear for the plate's rim and shadow.
+                .child(div().flex_none().w(TAB_PLATE_ROOM))
                 .children(tabs)
+                .child(div().flex_none().w(TAB_PLATE_ROOM))
                 .children(pinned_layer),
         )
         // The tab list button, at the strip's right end while the strip overflows.
@@ -2078,7 +2086,8 @@ mod tests {
         let mut motion = super::Motion::default();
         motion.sync(labels(20), 13);
         fit_tabs(&mut motion, 146.);
-        // 20 tabs of 146 (150 with the gap) in a strip 1200 wide, drawn 1100 in: the 14th tab (1950 to 2096) lies clear of both fades.
+        // 20 tabs of 146 (150 with the gap) in a strip 1200 wide, drawn 1100 in: the 14th tab (1953 to 2099, after the 3 point room at the
+        // strip's start) lies clear of both fades.
         motion.fit(1400.);
         motion.width.set(1200.);
         motion.fit(1400.);
@@ -2086,12 +2095,12 @@ mod tests {
         // A window 300 narrower takes the tab out from under the strip's right edge; the strip asks for it back.
         motion.fit(1100.);
         assert_eq!(motion.width.get(), 900.);
-        assert_eq!(motion.take_reveal(1100.), Some(2096. + 24. - 900.));
+        assert_eq!(motion.take_reveal(1100.), Some(2099. + 24. - 900.));
         // The same window again asks for nothing, and a window that grows leaves the strip where it is.
         motion.fit(1100.);
-        assert_eq!(motion.take_reveal(1220.), None);
+        assert_eq!(motion.take_reveal(1223.), None);
         motion.fit(1400.);
-        assert_eq!(motion.take_reveal(1220.), None);
+        assert_eq!(motion.take_reveal(1223.), None);
         // A strip the width canvas found narrower than the layout used asks too.
         motion.shrunk.set(true);
         motion.fit(1400.);
@@ -2116,7 +2125,7 @@ mod tests {
         motion.width.set(120.);
         motion.fit(300.);
         motion.reveal();
-        assert_eq!(motion.take_reveal(0.), Some(238.));
+        assert_eq!(motion.take_reveal(0.), Some(241.));
     }
 
     #[test]

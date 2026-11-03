@@ -90,7 +90,7 @@ The table is generated: run `scripts/tokens.sh` after editing `src/tokens.rs`. I
 | `TAB_PLATE_RIM_LIGHT` | `f32` | `0.1` | The plate's rim on a light theme. |
 | `TAB_PLATE_UNFOCUSED` | `f32` | `0.5` | How much of its shadow and lit top the plate keeps when the pane doesn't hold the keys: it flattens, as the segmented plate does out of key. |
 | `TAB_BAND_LIGHT` | `u32` | `0xF6F6F6` | The tab bar's band on a light theme: a step under the white page, so the active tab's white plate reads (finch#x7jk). |
-| `TAB_PLATE_ROOM` | `Pixels` | `px(3.)` | Room above and below the tab strip for the plate's shadow and rim, which the strip's scroll clip would cut. |
+| `TAB_PLATE_ROOM` | `Pixels` | `px(3.)` | Room around the tab strip's tabs for the plate's shadow and rim, which the strip's scroll clip would cut: padding above and below, and layout room before the first tab and after the last (finch#zrt1). The strip starts this much early, so the tabs stay put. |
 | `TAB_LIGHTS_CLEAR` | `Pixels` | `px(120.)` | The tab bar's left clearance for the traffic lights and the explorer button while the explorer is hidden: the button ends at 112, and 8 pt more is the bar's usual inset. |
 | `TAB_LIST_GAP` | `Pixels` | `px(4.)` | The space between the strip and the tab list button at its right end. |
 | `TAB_LIST_SYMBOL` | `f32` | `10.` | The tab list button's chevron, in points. |

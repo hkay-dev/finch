@@ -181,7 +181,8 @@ pub const TAB_PLATE_RIM_LIGHT: f32 = 0.1;
 pub const TAB_PLATE_UNFOCUSED: f32 = 0.5;
 /// The tab bar's band on a light theme: a step under the white page, so the active tab's white plate reads (finch#x7jk).
 pub const TAB_BAND_LIGHT: u32 = 0xF6F6F6;
-/// Room above and below the tab strip for the plate's shadow and rim, which the strip's scroll clip would cut.
+/// Room around the tab strip's tabs for the plate's shadow and rim, which the strip's scroll clip would cut: padding above and below,
+/// and layout room before the first tab and after the last (finch#zrt1). The strip starts this much early, so the tabs stay put.
 pub const TAB_PLATE_ROOM: Pixels = px(3.);
 /// The tab bar's left clearance for the traffic lights and the explorer button while the explorer is hidden: the button ends at 112, and 8 pt more is the bar's usual inset.
 pub const TAB_LIGHTS_CLEAR: Pixels = px(120.);
