@@ -76,7 +76,7 @@ scripts/dmg.sh
 
 It writes `target/release/Finch-<version>.dmg` (about 13 MB), with the app beside a shortcut to Applications. The app in it is signed ad hoc unless `FINCH_SIGN_IDENTITY` names a certificate, and it isn't notarized, so on another Mac the first open is blocked: open it from System Settings > Privacy & Security > Open Anyway.
 
-There are no prebuilt downloads yet.
+A built DMG is on the [Releases](https://github.com/hkay-dev/finch/releases) page. It needs a Mac with Apple Silicon, and its first open needs the same Open Anyway step.
 
 ## Settings
 
