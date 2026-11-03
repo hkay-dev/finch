@@ -65,25 +65,32 @@ The table is generated: run `scripts/tokens.sh` after editing `src/tokens.rs`. I
 | `HEADER_GAP` | `Pixels` | `px(6.)` | Gap between the explorer header's pieces; also the root name's wash padding on each side. |
 | `HEADER_CHEVRON_GAP` | `Pixels` | `px(3.)` | Gap between the root's name and its chevron. |
 | `TAB_HEIGHT` | `Pixels` | `px(28.)` | A tab's height; the tabs sit centered in the top band, on the traffic lights' line. |
-| `TAB_MIN_WIDTH` | `Pixels` | `px(148.)` | A tab never shrinks under this width; the bar scrolls instead. |
-| `TAB_FLOOR_WIDTH` | `Pixels` | `px(116.)` | A tab in a strip too narrow for `TAB_MIN_WIDTH` (a pane at `PANE_MIN`) shrinks to the room but never under this: the file symbol, the close slot and a cut title that still reads ("n…-3.md"). |
-| `TAB_MAX_WIDTH` | `Pixels` | `px(200.)` | A tab never grows past this width. |
+| `TAB_DROP_ROOM` | `Pixels` | `px(120.)` | The room a drag from elsewhere opens where it would land, and a lifted tab's width before its place is known. |
+| `TAB_FLOOR_WIDTH` | `Pixels` | `px(116.)` | A tab in a strip narrower than the tab shrinks to the room but never under this: the file symbol and a cut title that still reads ("n…-3.md"). |
+| `TAB_MAX_WIDTH` | `Pixels` | `px(200.)` | A tab is as wide as its icon, name and mark, and never grows past this width (finch#x7jk). |
 | `TAB_FOLD_AWAY` | `Pixels` | `px(60.)` | How far (vertically) a dragged tab is held from its bar before its slot folds closed behind the card. |
 | `TAB_FOLD_BACK` | `Pixels` | `px(45.)` | How near the bar the dragged tab comes back before its folded slot opens again. |
-| `TAB_PAD_X` | `Pixels` | `px(10.)` | A tab's side padding. |
-| `TAB_GAP` | `Pixels` | `px(2.)` | The gap between two tabs. |
-| `TAB_SEPARATOR_HEIGHT` | `Pixels` | `px(14.)` | The soft line between neighbouring tabs: its height, centered in the gap. |
-| `TAB_TITLE_PAD` | `Pixels` | `px(4.)` | Space between a tab's title and the slots on either side of it. |
+| `TAB_PAD_LEAD` | `Pixels` | `px(7.)` | A tab's padding before its icon slot: with the icon's own inset the icon sits 8 pt in (finch#x7jk). |
+| `TAB_PAD_TRAIL` | `Pixels` | `px(5.)` | A tab's padding after its title (or its mark): with the title's own pad, 11 pt after the name (finch#x7jk). |
+| `TAB_GAP` | `Pixels` | `px(4.)` | The gap between two tabs. No line sits in it: the tabs are words with a plate under the active one (finch#x7jk). |
+| `TAB_TITLE_PAD` | `Pixels` | `px(6.)` | Space each side of a tab's title, between it and the icon before it and the mark after it. |
 | `TAB_BAR_INSET` | `Pixels` | `px(8.)` | The bar's inset on its left, and the gap before the preview button on its right. |
 | `RADIUS_TAB` | `Pixels` | `px(7.)` | A tab's corner radius. |
-| `TAB_CLOSE_SLOT` | `Pixels` | `px(16.)` | The square slot that holds a tab's unsaved dot and close button. |
+| `TAB_CLOSE_SLOT` | `Pixels` | `px(16.)` | The square slot at a tab's left that holds its file icon and, under the pointer, the close button. |
 | `TAB_CLOSE_HIT` | `Pixels` | `px(20.)` | The close button's hit and wash: a square a little larger than its slot, so it is easy to land on; it reaches 2 pt out each side of the slot and moves nothing. |
 | `TAB_CLOSE_SYMBOL` | `f32` | `9.` | A tab's close symbol, in points. |
-| `TAB_CLOSE_REST_ALPHA` | `f32` | `0.5` | How strong the close button rests on the selected tab (the pointer brings it to full): a faint ×. |
+| `TAB_TRAIL_SLOT` | `Pixels` | `px(10.)` | The slot after a tab's name for its unsaved dot, lock, warning or pin; the tab grows by it while one shows (finch#x7jk). |
 | `TAB_ICON` | `f32` | `13.` | A tab's file icon, in points: the explorer's tinted symbol, a little smaller than its rows', centered in the close slot. |
 | `TAB_LOCK_DOT` | `Pixels` | `px(5.)` | The dot at the corner of a locked tab's lock that says the file has unsaved edits: its size. |
-| `TAB_LOCK_DOT_INSET` | `Pixels` | `px(1.)` | How far that dot sits in from the top and right of the tab's close slot. |
+| `TAB_LOCK_DOT_INSET` | `Pixels` | `px(0.)` | How far that dot sits in from the top and right of the tab's mark slot, over the lock's corner. |
 | `TAB_WARNING_SYMBOL` | `f32` | `11.` | The warning sign on a tab whose file changed on disk, in points. |
+| `TAB_PLATE_SHADOW` | `[f32; 3]` | `[0.35, 1., 1.5]` | The active tab's plate on a dark theme: its contact shadow (black alpha, y, blur), as the segmented plate's (finch#x7jk). |
+| `TAB_PLATE_SHADOW_LIGHT` | `[f32; 3]` | `[0.2, 0.5, 1.5]` | The plate's contact shadow on a light theme, a half-point shadow like a push button's. |
+| `TAB_PLATE_RIM` | `f32` | `0.3` | The plate's rim: black at this alpha, half a point wide, on a dark theme. |
+| `TAB_PLATE_RIM_LIGHT` | `f32` | `0.1` | The plate's rim on a light theme. |
+| `TAB_PLATE_UNFOCUSED` | `f32` | `0.5` | How much of its shadow and lit top the plate keeps when the pane doesn't hold the keys: it flattens, as the segmented plate does out of key. |
+| `TAB_BAND_LIGHT` | `u32` | `0xF6F6F6` | The tab bar's band on a light theme: a step under the white page, so the active tab's white plate reads (finch#x7jk). |
+| `TAB_PLATE_ROOM` | `Pixels` | `px(3.)` | Room above and below the tab strip for the plate's shadow and rim, which the strip's scroll clip would cut. |
 | `TAB_LIGHTS_CLEAR` | `Pixels` | `px(120.)` | The tab bar's left clearance for the traffic lights and the explorer button while the explorer is hidden: the button ends at 112, and 8 pt more is the bar's usual inset. |
 | `TAB_LIST_GAP` | `Pixels` | `px(4.)` | The space between the strip and the tab list button at its right end. |
 | `TAB_LIST_SYMBOL` | `f32` | `10.` | The tab list button's chevron, in points. |

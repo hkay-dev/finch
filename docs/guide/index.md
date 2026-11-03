@@ -265,14 +265,16 @@ explorer's filter shows the same note under its matches.
 ## Tabs
 
 The tabs sit along the top of the window, right of the folder tree, on the
-line of the window buttons, with a thin line under them. Each tab shows the
-file's name, centered, with the file's icon before it (the folder tree's icons; an
-Untitled page has the plain text one). While the file has unsaved changes a dot
-takes the icon's place;
+line of the window buttons, with a thin line under them. Each tab is as wide as
+what it shows, up to 200 points: the file's icon at the left (the folder tree's icons; an
+Untitled page has the plain text one), then the file's name. While the file has unsaved changes a dot
+follows the name;
 a file that can't be written shows a lock there instead, and with unsaved
-changes the lock carries a small dot at its corner. A faint line separates
-neighbouring tabs and fades away beside the tab in front and the tab under the
-pointer. The tab in front rests a faint close x in the icon's place; on the other tabs, point at the tab and the icon, dot or lock fades into a close button, which
+changes the lock carries a small dot at its corner. The tab grows a little to
+make room for the dot and gives the room back after a save. The tab in front
+stands on a small raised plate, lit along its top in a dark theme and white on the
+grey tab band in a light one; the other tabs are plain. Point at a tab and its
+icon fades into a close button, which
 takes a click a little outside the small x too. Rest the pointer on any tab and
 its tip gives the file's full path (with ~ for your home folder; an Untitled
 page gives its title), "Read-only" on its own line for a locked file, and
@@ -287,9 +289,9 @@ preview button, the explorer button and the folder tree's header buttons all lig
 with a short fade as the pointer comes and goes, and a little more while pressed. A name too long for its tab shortens
 in the middle and keeps its extension ("workspa....rs"). When the tabs don't
 fit, the bar scrolls, and an end with more tabs past it fades out instead of
-cutting a tab off. The tab in front is shaded lighter while its pane has the
-keyboard in the front window, and dimmer when it doesn't.
-When a save lands, the dot shrinks away in a moment as the icon fades back in, and the title brightens once; Save all ripples that across the tabs, left to right. A save that fails swells the dot once in the warning color instead. A save that is still writing a quarter of a second after it started (a big file, a slow disk) makes the dot breathe, dimming softly and back about once every second, and the shrink starts from however bright the dot is when the save lands; a quicker save shows nothing extra.
+cutting a tab off; a very narrow pane shrinks a tab to fit, down to about 116 points. The plate under the tab in front is
+raised more while its pane has the keyboard in the front window, and flatter when it doesn't.
+When a save lands, the dot shrinks away in a moment and the tab closes up its room, and the title brightens once; Save all ripples that across the tabs, left to right. A save that fails swells the dot once in the warning color instead. A save that is still writing a quarter of a second after it started (a big file, a slow disk) makes the dot breathe, dimming softly and back about once every second, and the shrink starts from however bright the dot is when the save lands; a quicker save shows nothing extra.
 Hold Cmd and click a tab to see where its file lives, as the title of a Finder or TextEdit window does: a menu opens under the tab with the file, then each folder above it up to the disk, each with its Finder icon. Pick one and Finder opens it with the next one down the path selected (the file itself is shown selected in its folder). The tab's right-click menu has the same as Show path. A page with no file, such as an Untitled one, has no path menu and the Cmd-click just selects it.
 Rest the pointer on a tab for half a second and its tip opens as a small card under the tab: the tip's lines (path, Pinned, Unsaved changes and so on), then the five lines of the file around its caret, with the caret's line tinted, in the editor's font. It is the same for the tab in front. Move to the next tab and the card glides across to it instead of closing and opening; leave the tabs, press a tab or start a menu and it fades. A file you haven't looked at yet in this window shows only the tip, since its text isn't read until you do. The card doesn't mark changed lines.
 Press the file icon at a tab's left (the spot where the close x shows under the pointer) and drag: a small card with the file's icon and name follows the pointer, and letting go on the Desktop, in a Finder folder or in a Mail message copies the file there, as the proxy icon in an old title bar did. A plain click on the same spot still closes the tab, and dragging the rest of the tab still reorders it. It is the file as it is on disk that goes, not unsaved changes; save first to send those. An Untitled page has no file, so its icon drags like the rest of the tab.
@@ -346,8 +348,8 @@ back when you leave full screen.
   tab moves to the end of the pins at the left of the bar and stays left of
   every other tab: new tabs open after the pins, and dragging a tab along the
   bar keeps pinned tabs among the pins and the others after them. A pinned tab
-  shows a pin in place of its icon (with unsaved changes the dot
-  shows, and the pin comes back as the pointer arrives). When the tabs don't
+  shows a pin after its name (with unsaved changes the dot
+  shows there instead) and has no close button. When the tabs don't
   fit, the pinned tabs stay at the left of the bar and only the others scroll,
   under a fade at the pins' right edge; showing a tab scrolls it clear of the
   pins. Close other tabs,

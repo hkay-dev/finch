@@ -1,9 +1,10 @@
 //! The tab bar: one row of tabs in the window's top band, right of the explorer column, drawn
 //! for a `Pane`.
 //!
-//! A tab is a title centered between a slot at the left (the file's symbol; the lock, the unsaved dot or the pin take its place, and under the pointer the close button) and an empty one. The
-//! tabs share the bar's width between `TAB_MIN_WIDTH` and `TAB_MAX_WIDTH` and the bar scrolls past
-//! that. A press selects, a middle click closes, and dragging lifts the tab as a ghost that sits
+//! A tab is as wide as what it shows (finch#x7jk): a slot at the left with the file's symbol (the close button under the pointer), the
+//! title, and while it has one a mark after it (the unsaved dot, the lock, a warning or the pin), up to `TAB_MAX_WIDTH`; the bar scrolls past its room.
+//! The active tab stands on a small plate with a lit top and a contact shadow; the rest are plain until the pointer lights them.
+//! A press selects, a middle click closes, and dragging lifts the tab as a ghost that sits
 //! under the pointer exactly where it was grabbed, its shadow easing up from flat; the tab's slot
 //! follows the pointer through the bar. Let go in the bar, a copy of the ghost springs home into
 //! the slot and crossfades with it. Every change to the pane goes through `Pane::later`, since a
@@ -11,7 +12,7 @@
 //!
 //! The bar's motion lives in `Motion`, which the pane steps once per frame while anything moves
 //! and not at all at rest. The tabs are laid out by it, not by flex, so a tab arriving or folding
-//! away takes its width from the others continuously, a reorder glides every other tab to its new
+//! away opens or closes its room continuously, a tab whose name or mark changes eases to its new width, a reorder glides every other tab to its new
 //! place, and the active tab's mark is one shape that springs from tab to tab (the explorer
 //! selection's spring). The dragged tab's slot never eases. A drag from elsewhere (another pane's
 //! tab, or files) over the strip opens an empty gap where it would land, which eases open and
@@ -39,11 +40,12 @@ use crate::{
     symbols,
     theme, tooltip,
     tokens::{
-        ALPHA_HAIRLINE, ALPHA_HOVER, ALPHA_HOVER_LIGHT, ALPHA_PRIMARY, ALPHA_SECONDARY, ALPHA_SELECTED, ALPHA_SELECTED_LIGHT, ALPHA_SELECTED_UNFOCUSED, ALPHA_STATUS_DIM,
+        ALPHA_HAIRLINE, ALPHA_HOVER, ALPHA_HOVER_LIGHT, ALPHA_PRIMARY, ALPHA_SECONDARY, ALPHA_SELECTED, ALPHA_SELECTED_LIGHT, ALPHA_SELECTED_UNFOCUSED, ALPHA_STATUS_DIM, ALPHA_TERTIARY,
         ALPHA_SELECTED_UNFOCUSED_LIGHT, ALPHA_SNIPPET_CARET, ALPHA_TAB_DRAGGED, ARRIVE, DOT, FADE_QUICK, LAYER_TOOLTIP, PEEK_EDGE, PEEK_GAP, PEEK_TEXT_MAX, PEEK_WIDTH, RADIUS_TOOLTIP, SAVE_BREATH_LOW, SAVE_BREATH_PERIOD, SAVE_BRIGHTEN, SAVE_SETTLE, SAVE_SLOW, SAVE_SWELL, TEXT_SUBHEADLINE, TEXT_SUBHEADLINE_LINE, TOOLTIP_PAD_X, TOOLTIP_PAD_Y, TOOLTIP_RISE,
         ICON_BUTTON, ICON_BUTTON_INSET, LAYER_TAB_LANDING, LIST_EDGE_FADE, MAX_STEP, RADIUS_TAB, REVEAL_INSET, SELECT_RESPONSE, SETTLE_RATE,
         TAB_ARRIVE_FADE_FROM, TAB_ICON, TAB_LINE_TITLE_FADE,
-        TAB_CLOSE_HIT, TAB_CLOSE_REST_ALPHA, TAB_CLOSE_SLOT, TAB_CLOSE_SYMBOL, TAB_FLOOR_WIDTH, TAB_FOLDER_FADE, TAB_FOLDER_GAP, TAB_LIST_BADGE_INSET, TAB_LIST_GAP, TAB_LIST_SYMBOL, TAB_LOCK_DOT, TAB_LOCK_DOT_INSET, TAB_BAR_INSET, TAB_GAP, TAB_HEIGHT, TAB_MAX_WIDTH, TAB_MIN_WIDTH, TAB_PAD_X, TAB_SEPARATOR_HEIGHT, TAB_TITLE_DRIFT, TAB_TITLE_PAD, TAB_WARNING_SYMBOL, TEXT_BODY,
+        TAB_CLOSE_HIT, TAB_CLOSE_SLOT, TAB_CLOSE_SYMBOL, TAB_DROP_ROOM, TAB_FLOOR_WIDTH, TAB_FOLDER_FADE, TAB_FOLDER_GAP, TAB_LIST_BADGE_INSET, TAB_LIST_GAP, TAB_LIST_SYMBOL, TAB_LOCK_DOT, TAB_LOCK_DOT_INSET, TAB_BAR_INSET, TAB_GAP, TAB_HEIGHT, TAB_MAX_WIDTH, TAB_PAD_LEAD, TAB_PAD_TRAIL,
+        TAB_PLATE_RIM, TAB_PLATE_RIM_LIGHT, TAB_PLATE_ROOM, TAB_PLATE_SHADOW, TAB_PLATE_SHADOW_LIGHT, TAB_PLATE_UNFOCUSED, TAB_TITLE_DRIFT, TAB_TITLE_PAD, TAB_TRAIL_SLOT, TAB_WARNING_SYMBOL, TEXT_BODY,
     },
 };
 
@@ -202,7 +204,7 @@ pub struct TabDrag {
 
 impl TabDrag {
     fn new(id: EntityId, pinned: bool) -> Self {
-        Self { id, pinned, grab: Cell::new(Point::default()), width: Cell::new(TAB_MIN_WIDTH), lifted_at: Cell::new(None) }
+        Self { id, pinned, grab: Cell::new(Point::default()), width: Cell::new(TAB_DROP_ROOM), lifted_at: Cell::new(None) }
     }
 
     /// Where the ghost is drawn with the pointer at `pointer`, and how far it has lifted at `now`.
@@ -250,37 +252,37 @@ fn card(label: &TabLabel, width: Pixels, lift: f32, cx: &App) -> Div {
         .map(|shadow| BoxShadow { color: shadow.color.opacity(lift), offset: point(px(0.), shadow.offset.y * lift), blur_radius: shadow.blur_radius * lift, ..shadow })
         .collect();
     let text = theme::ink(ALPHA_PRIMARY, cx);
-    // The slot at the left shows what the tab does at rest: its sign, else its pin, else its file's symbol; the one at the right is empty.
+    // The tab as it is at rest: its file's symbol at the left, and after the title its sign, else its pin.
     let icon_ink = Hsla { a: text.a, ..theme::ink(1., cx) };
-    let mark = if label.marked() {
-        sign_mark(label.sign(), theme.warning, text, f32::from(label.lock_dot()))
+    let trail = if label.marked() {
+        Some(sign_mark(label.sign(), theme.warning, text, f32::from(label.lock_dot())))
     } else if label.pinned {
-        symbols::icon("pin.fill", TAB_CLOSE_SYMBOL).into_any_element()
+        Some(div().text_color(theme::ink(ALPHA_TERTIARY, cx)).child(symbols::icon("pin.fill", TAB_CLOSE_SYMBOL)).into_any_element())
     } else {
-        icons::file(if label.path.is_some() { &*label.title } else { "" }, TAB_ICON, icon_ink)
+        None
     };
     tooltip::float(f32::from(RADIUS_TAB), fill, border, light, true)
         .shadow(shadows)
         .w(width)
         .h(TAB_HEIGHT)
-        .px(TAB_PAD_X)
+        .pl(TAB_PAD_LEAD)
+        .pr(TAB_PAD_TRAIL)
         .flex()
         .items_center()
         .font_family(theme.font_family.clone())
         .font_weight(FontWeight(crate::settings::get(cx).text.weight))
         .text_size(TEXT_BODY)
         .text_color(text)
-        // The title sits between two slots, centered as the tab's own is.
-        .child(div().size(TAB_CLOSE_SLOT).flex_none().flex().items_center().justify_center().child(mark))
+        .child(div().size(TAB_CLOSE_SLOT).flex_none().flex().items_center().justify_center().child(icons::file(if label.path.is_some() { &*label.title } else { "" }, TAB_ICON, icon_ink)))
         .child(title_text(&label.title, label.from_line, label.folder.as_ref(), label.preview, label.gone, line_ink(label.from_line, text)))
-        .child(div().size(TAB_CLOSE_SLOT).flex_none())
+        .children(trail.map(|mark| div().w(TAB_TRAIL_SLOT).h(TAB_CLOSE_SLOT).flex_none().flex().items_center().justify_center().child(mark)))
 }
 
 /// A tab's title as the strip draws it: the name alone is one run; with a folder, the name keeps its width and the folder,
 /// quieter, takes what is left and is cut first. A preview tab's is italic and a deleted file's is struck through.
 /// A title taken from an Untitled page's first line (`from_line`) is words, not a file name: it has no extension to keep, so it is cut once at its end.
 fn title_text(title: &SharedString, from_line: bool, folder: Option<&SharedString>, preview: bool, gone: bool, text: Hsla) -> Div {
-    let styled = |label: Div| label.px(TAB_TITLE_PAD).justify_center().when(preview, |label| label.italic()).when(gone, |label| label.line_through());
+    let styled = |label: Div| label.px(TAB_TITLE_PAD).when(preview, |label| label.italic()).when(gone, |label| label.line_through());
     match folder {
         None => styled(name_label(title, from_line, text, None)),
         Some(folder) => styled(
@@ -293,6 +295,31 @@ fn title_text(title: &SharedString, from_line: bool, folder: Option<&SharedStrin
                 .child(name_label(folder, true, Hsla { a: text.a * TAB_FOLDER_FADE, ..text }, None).flex_initial().pl(TAB_FOLDER_GAP)),
         ),
     }
+}
+
+/// How wide tab `label` is with no mark after its title: the padding, the icon slot, the title (and its twin folder) as
+/// `window` shapes it in `family` at `weight`, rounded up, and the title's pad each side.
+fn natural_width(label: &TabLabel, family: &SharedString, weight: f32, window: &Window) -> f32 {
+    let style = if label.preview { FontStyle::Italic } else { FontStyle::Normal };
+    let measure = |text: &SharedString| {
+        let font = Font { family: family.clone(), features: FontFeatures::default(), fallbacks: None, weight: FontWeight(weight), style };
+        let run = TextRun { len: text.len(), font, color: Hsla::default(), background_color: None, underline: None, strikethrough: None };
+        f32::from(window.text_system().shape_line(text.clone(), TEXT_BODY, &[run], None).width)
+    };
+    let folder = label.folder.as_ref().map_or(0., |folder| f32::from(TAB_FOLDER_GAP) + measure(folder));
+    let title = (measure(&label.title) + folder).ceil();
+    f32::from(TAB_PAD_LEAD + TAB_CLOSE_SLOT + TAB_TITLE_PAD * 2. + TAB_PAD_TRAIL) + title
+}
+
+/// The width tab content wants: `natural` plus `trail` of the mark's slot, never past `TAB_MAX_WIDTH`.
+fn wanted_width(natural: f32, trail: f32) -> f32 {
+    (natural + trail * f32::from(TAB_TRAIL_SLOT)).min(f32::from(TAB_MAX_WIDTH))
+}
+
+/// A tab `wide` points wide as it draws in a strip with `room` for one tab: whole when it fits, else the room, but never
+/// under `TAB_FLOOR_WIDTH` (a narrower tab keeps its own width), so one tab always shows whole instead of a slice of it.
+fn fitted_width(wide: f32, room: f32) -> f32 {
+    wide.min(room.max(f32::from(TAB_FLOOR_WIDTH)))
 }
 
 /// Records `place`, where a tab drawn as room alone sits, under `id` when rects are on.
@@ -375,6 +402,20 @@ struct Slot {
     /// Where layout put it, in the strip's content.
     x: f32,
     placed: bool,
+    /// The tab's width with no mark (`natural_width`) and whether it was measured for the label it shows: a new or retitled tab is measured
+    /// before it is laid out (`Motion::measure`), and until then counts as `TAB_DROP_ROOM`.
+    natural: f32,
+    measured: bool,
+    /// The width of the tab's content without its mark, easing to `natural` when its title changes, and its speed; `sized` once it has one.
+    wide: f32,
+    wide_v: f32,
+    sized: bool,
+    /// How much of the mark's slot after the title is open (0 shut, 1 open), fading when the tab gains or loses a mark or pin. It
+    /// adds to `wide`, so the title keeps its room while it opens.
+    trail_fade: Fade,
+    trail: f32,
+    /// The width the tab is drawn at this frame: `wide` and its open mark slot, fitted to the strip's room.
+    w: f32,
     /// How much of the tab's mark (dot, lock or warning sign) shows, and which sign it last was, drawn while it fades away.
     mark: Fade,
     mark_level: f32,
@@ -470,7 +511,53 @@ impl Slot {
         let shares = Sign::ALL.map(|own| Fade::with(f32::from(own == sign), FADE_QUICK));
         let share_levels = Sign::ALL.map(|own| f32::from(own == sign));
         let (pin, pin_level) = (Fade::with(f32::from(label.pinned), FADE_QUICK), f32::from(label.pinned));
-        Self { label, leaving: false, level, level_v: 0., lit: 0., lit_fade: Fade::at(0.), lit_to: 0., lifted: 0., dir: 0., offset: 0., offset_v: 0., x: 0., placed: false, mark, mark_level, corner, corner_level, pin, pin_level, sign, shares, share_levels, retitle: None, title_level: 1., settle: None, breath: 1. }
+        let trail = f32::from(label.marked() || label.pinned);
+        Self {
+            label,
+            leaving: false,
+            level,
+            level_v: 0.,
+            lit: 0.,
+            lit_fade: Fade::at(0.),
+            lit_to: 0.,
+            lifted: 0.,
+            dir: 0.,
+            offset: 0.,
+            offset_v: 0.,
+            x: 0.,
+            placed: false,
+            natural: f32::from(TAB_DROP_ROOM),
+            measured: false,
+            wide: 0.,
+            wide_v: 0.,
+            sized: false,
+            trail_fade: Fade::with(trail, FADE_QUICK),
+            trail,
+            w: 0.,
+            mark,
+            mark_level,
+            corner,
+            corner_level,
+            pin,
+            pin_level,
+            sign,
+            shares,
+            share_levels,
+            retitle: None,
+            title_level: 1.,
+            settle: None,
+            breath: 1.,
+        }
+    }
+
+    /// Whether the mark's slot after the title is open: the tab has a mark or a pin.
+    fn trail_to(&self) -> f32 {
+        f32::from(self.label.marked() || self.label.pinned)
+    }
+
+    /// The width the tab settles at in a strip with `room` for one tab.
+    fn settled(&self, room: f32) -> f32 {
+        fitted_width(wanted_width(self.natural, self.trail_to()), room)
     }
 }
 
@@ -641,8 +728,8 @@ pub struct Motion {
     /// The tab order changed this frame.
     reordered: bool,
     seen: bool,
-    /// One tab's share of the strip, with its gap.
-    unit: f32,
+    /// The family and weight the tabs were measured in: a change measures every tab again.
+    font: Option<(SharedString, f32)>,
     /// The strip's width the layout used, kept current by a canvas in the band.
     width: Rc<Cell<f32>>,
     /// The window's width when `width` was last set, so a resize frame can carry the strip's width to its own frame's.
@@ -740,6 +827,8 @@ impl Motion {
                     // landing elsewhere (at the end of the pins), it glides there from the gap.
                     if let Some(gap) = self.gap.take_if(|gap| gap.landing) {
                         (slot.level, slot.level_v, slot.x, slot.placed) = (gap.level, gap.level_v, gap.x, true);
+                        // It takes the gap's width too, and eases from there to its own.
+                        (slot.wide, slot.sized) = (f32::from(TAB_DROP_ROOM), true);
                         self.reordered = true;
                     }
                     slot
@@ -749,6 +838,8 @@ impl Motion {
             // The same text in another style (a preview tab kept, a file deleted under its edits) crossfades the same way, in place.
             let renamed = slot.label.title != label.title || slot.label.folder != label.folder;
             if renamed || slot.label.preview != label.preview || slot.label.gone != label.gone || slot.label.from_line != label.from_line {
+                // Its width follows its new title, measured before the next layout.
+                slot.measured = false;
                 slot.retitle = Some(Retitle {
                     old: slot.label.title.clone(),
                     old_folder: slot.label.folder.clone(),
@@ -817,6 +908,19 @@ impl Motion {
         self.slots = out;
     }
 
+    /// Measures each tab not measured for the title it shows (all of them when the theme's family or the text weight
+    /// changed), shaping its title as the tab draws it. Call it after `sync` and before `advance`, which lays them out.
+    pub fn measure(&mut self, window: &Window, cx: &App) {
+        let font = (cx.theme().font_family.clone(), crate::settings::get(cx).text.weight);
+        if self.font.as_ref() != Some(&font) {
+            self.slots.iter_mut().for_each(|slot| slot.measured = false);
+            self.font = Some(font.clone());
+        }
+        for slot in self.slots.iter_mut().filter(|slot| !slot.measured) {
+            (slot.natural, slot.measured) = (natural_width(&slot.label, &font.0, font.1, window), true);
+        }
+    }
+
     /// What tab `id` shows now, for the card a held drag lifts.
     pub fn label_of(&self, id: EntityId) -> Option<&TabLabel> {
         self.slots.iter().find(|slot| slot.label.id == id).map(|slot| &slot.label)
@@ -858,12 +962,13 @@ impl Motion {
     /// Whether any live tab with a dot (unsaved edits) or a warning (changed or gone on disk) has its mark outside the strip's view, drawn `at` points in, as the layout of this frame has them. The pane passes the view the strip settles in, so a glide's frames never change the answer.
     fn hidden_mark(&self, at: f32) -> bool {
         let view = self.width.get();
-        let (gap, slot) = (f32::from(TAB_GAP), f32::from(TAB_CLOSE_SLOT));
+        let (gap, slot) = (f32::from(TAB_GAP), f32::from(TAB_TRAIL_SLOT));
         // The pinned tabs hold the strip's left, so they are never out of view and the rest scroll under them.
-        let held: f32 = self.slots.iter().filter(|tab| !tab.leaving && tab.label.pinned).map(|tab| tab.level * self.unit).sum();
+        let held: f32 = self.slots.iter().filter(|tab| !tab.leaving && tab.label.pinned).map(|tab| tab.level * (tab.w + gap)).sum();
         view > 0.
             && self.slots.iter().filter(|tab| !tab.leaving && !tab.label.pinned && (tab.label.dirty || tab.label.conflict || tab.label.gone)).any(|tab| {
-                let right = tab.x + tab.level * self.unit - gap - f32::from(TAB_PAD_X);
+                // The mark sits in the slot after the title, at the tab's right end.
+                let right = tab.x + tab.level * (tab.w + gap) - gap - f32::from(TAB_PAD_TRAIL);
                 right - slot < at + held || right > at + view
             })
     }
@@ -993,19 +1098,20 @@ impl Motion {
             return None;
         }
         self.reveal = false;
-        let live: Vec<EntityId> = self.slots.iter().filter(|slot| !slot.leaving).map(|slot| slot.label.id).collect();
-        let ix = live.iter().position(|id| Some(*id) == self.active)?;
+        let gap = f32::from(TAB_GAP);
+        // Each live tab's room in the strip once it settles: its own width, fitted to the strip, and its gap.
+        let units: Vec<(EntityId, f32)> = self.slots.iter().filter(|slot| !slot.leaving).map(|slot| (slot.label.id, slot.settled(view - gap) + gap)).collect();
+        let ix = units.iter().position(|(id, _)| Some(*id) == self.active)?;
         let pinned = self.slots.iter().filter(|slot| !slot.leaving && slot.label.pinned).count();
         if ix < pinned {
             return None;
         }
-        let gap = f32::from(TAB_GAP);
-        let unit = share(view, live.len() as f32);
-        let (left, right) = (ix as f32 * unit, ix as f32 * unit + unit - gap);
+        let left: f32 = units[..ix].iter().map(|(_, unit)| unit).sum();
+        let right = left + units[ix].1 - gap;
         // Where a fade lies over the strip's end (more tabs past it), a tab under it is not in view; a strip with little room beside the tab has less of it.
-        let held = pinned as f32 * unit;
-        let inset = f32::from(REVEAL_INSET).min((view - held - (unit - gap)).max(0.) / 2.);
-        let max = (live.len() as f32 * unit - view).max(0.);
+        let held: f32 = units[..pinned].iter().map(|(_, unit)| unit).sum();
+        let inset = f32::from(REVEAL_INSET).min((view - held - (units[ix].1 - gap)).max(0.) / 2.);
+        let max = (units.iter().map(|(_, unit)| unit).sum::<f32>() - view).max(0.);
         let (clear_left, clear_right) = (if at > 0.5 { inset } else { 0. }, if at < max - 0.5 { inset } else { 0. });
         if left >= at + held + clear_left && right <= at + view - clear_right {
             return None;
@@ -1169,23 +1275,32 @@ impl Motion {
             }
         }
 
-        // Layout: each tab takes its level of one share; the shares fill the strip.
+        // Layout: each tab takes its level of its own width, fitted to the strip's room, and its gap.
         let gap = f32::from(TAB_GAP);
-        let total: f32 = self.slots.iter().map(|slot| slot.level).sum::<f32>() + self.gap.as_ref().map_or(0., |room| room.level);
         let width = (self.width.get() + self.list_reserved.get() - self.list_level.get() * f32::from(ICON_BUTTON + TAB_LIST_GAP)).max(0.);
-        self.unit = if total > 0. && width > 0. { share(width, total) } else { f32::from(TAB_MAX_WIDTH) + gap };
-        self.content = total * self.unit;
+        let room = if width > 0. { width - gap } else { f32::MAX };
         let mut x = 0.;
         let mut live = 0;
         for slot in &mut self.slots {
-            // The gap takes its level of one share before the live tab it sits before.
+            // A tab's content eases to a new title's width, and its mark's slot opens or shuts beside it; the strip's room fits it
+            // at once, so a resize never lags.
+            slot.trail_fade.aim(slot.trail_to(), now);
+            slot.trail = slot.trail_fade.level(now);
+            moving |= slot.trail_fade.is_moving(now);
+            if slot.sized {
+                moving |= follow(&mut slot.wide, &mut slot.wide_v, slot.natural, level_omega, dt, 0.25, 4.);
+            } else {
+                (slot.wide, slot.sized) = (slot.natural, true);
+            }
+            slot.w = fitted_width(wanted_width(slot.wide, slot.trail), room);
+            // The gap takes its level of the room it opens before the live tab it sits before.
             if let Some(room) = self.gap.as_mut().filter(|room| !slot.leaving && room.at == live) {
                 room.x = x;
-                x += room.level * self.unit;
+                x += room.level * (f32::from(TAB_DROP_ROOM) + gap);
             }
             live += usize::from(!slot.leaving);
             let new_x = x;
-            x += slot.level * self.unit;
+            x += slot.level * (slot.w + gap);
             if self.reordered && slot.placed {
                 if dragging == Some(slot.label.id) {
                     (slot.offset, slot.offset_v) = (0., 0.);
@@ -1200,14 +1315,16 @@ impl Motion {
         }
         if let Some(room) = self.gap.as_mut().filter(|room| room.at >= live) {
             room.x = x;
+            x += room.level * (f32::from(TAB_DROP_ROOM) + gap);
         }
+        self.content = x;
         self.reordered = false;
 
         let target = self
             .slots
             .iter()
             .find(|slot| Some(slot.label.id) == self.active && !slot.leaving)
-            .map(|slot| [slot.x + slot.offset, (slot.level * self.unit).min(self.unit - gap)]);
+            .map(|slot| [slot.x + slot.offset, (slot.level * (slot.w + gap)).min(slot.w)]);
         match target {
             None => (self.mark.live, self.glide) = (false, false),
             Some(to) if !self.mark.live || !self.glide || dragging == self.active => {
@@ -1226,15 +1343,6 @@ impl Motion {
         self.last = moving.then_some(now);
         moving
     }
-}
-
-/// One tab's share of a strip `room` points wide among `total` tabs, gap included. Between `TAB_MIN_WIDTH` and `TAB_MAX_WIDTH`, but a strip too
-/// narrow for one least-width tab (a pane at `PANE_MIN`, with its list button) lets the tab shrink to the room, down to `TAB_FLOOR_WIDTH`,
-/// so one whole tab always shows instead of a slice of a wide one.
-fn share(room: f32, total: f32) -> f32 {
-    let gap = f32::from(TAB_GAP);
-    let least = (f32::from(TAB_MIN_WIDTH) + gap).min(room.max(f32::from(TAB_FLOOR_WIDTH) + gap));
-    (room / total).clamp(least, f32::from(TAB_MAX_WIDTH) + gap)
 }
 
 /// The bar's right padding while the window's preview button sits over it. `level` is how open the
@@ -1268,16 +1376,16 @@ pub fn render(
     let theme = cx.theme();
     let foreground = theme.sidebar_foreground;
     let warning = theme.warning;
-    let (muted, primary) = (theme::ink(ALPHA_SECONDARY, cx), theme::ink(ALPHA_PRIMARY, cx));
+    let (muted, primary, pin_ink) = (theme::ink(ALPHA_SECONDARY, cx), theme::ink(ALPHA_PRIMARY, cx), theme::ink(ALPHA_TERTIARY, cx));
     let live_count = motion.slots.iter().filter(|slot| !slot.leaving).count();
     bounds.borrow_mut().resize(live_count, Bounds::default());
     let gap = f32::from(TAB_GAP);
-    let tab_width = px(motion.unit - gap);
+    let widest = f32::from(TAB_MAX_WIDTH) + gap;
 
-    // The strip's visible span in its content, a tab wider each side so one scrolling into view is built.
+    // The strip's visible span in its content, the widest tab wider each side so one scrolling into view is built.
     let (view_left, view_right) = {
         let (view, left) = (f32::from(scroll.bounds().size.width), -f32::from(scroll.offset().x));
-        if view > 0. { (left - motion.unit, left + view + motion.unit) } else { (f32::MIN, f32::MAX) }
+        if view > 0. { (left - widest, left + view + widest) } else { (f32::MIN, f32::MAX) }
     };
     // A tab at rest out of sight draws as room alone; its place is still written for drags and reveals.
     let room = |slot: &Slot| {
@@ -1296,7 +1404,9 @@ pub fn render(
             && slot.retitle.is_none()
             && slot.title_level == 1.
             && slot.settle.is_none()
-            && (slot.x + motion.unit < view_left || slot.x > view_right)
+            && slot.wide == slot.natural
+            && slot.trail == slot.trail_to()
+            && (slot.x + slot.w + gap < view_left || slot.x > view_right)
     };
     // Where the strip's content began when the tabs were last drawn, read off a tab that is still drawn: the places the
     // spacers write line up with the places the drawn tabs wrote.
@@ -1304,7 +1414,7 @@ pub fn render(
         let places = bounds.borrow();
         motion.slots.iter().filter(|slot| !slot.leaving).enumerate().find(|(ix, slot)| !slot.label.pinned && !room(slot) && slot.offset == 0. && places[*ix].size.width > px(0.)).map(|(ix, slot)| places[ix].origin.x - px(slot.x))
     };
-    let strip_top = scroll.bounds().origin.y;
+    let strip_top = scroll.bounds().origin.y + TAB_PLATE_ROOM;
     let mut live_ix = 0;
     let in_key = key;
     // The pinned tabs are drawn apart, in a layer held at the strip's left while the rest scroll under it; the flow keeps their room.
@@ -1312,19 +1422,18 @@ pub fn render(
     let mut tabs: Vec<_> = motion
         .slots
         .iter()
-        .enumerate()
-        .map(|(slot_ix, slot)| {
+        .map(|slot| {
             let leaving = slot.leaving;
             let ix = live_ix;
             if !leaving {
                 live_ix += 1;
             }
             if room(slot) {
-                let place = content_left.map(|left| Bounds { origin: point(left + px(slot.x), strip_top), size: size(tab_width, TAB_HEIGHT) });
+                let place = content_left.map(|left| Bounds { origin: point(left + px(slot.x), strip_top), size: size(px(slot.w), TAB_HEIGHT) });
                 if let Some((entry, place)) = bounds.borrow_mut().get_mut(ix).zip(place) {
                     *entry = place;
                 }
-                return div().flex_none().h(TAB_HEIGHT).w(px(motion.unit)).children(place.and_then(|place| rect_canvas(format!("tab:{}", ix + 1), place)));
+                return div().flex_none().h(TAB_HEIGHT).w(px(slot.w + gap)).children(place.and_then(|place| rect_canvas(format!("tab:{}", ix + 1), place)));
             }
             let TabLabel { id, title, from_line, folder, path, conflict: _, gone, dirty: _, locked: _, preview, pinned, saving: _ } = slot.label.clone();
             let key = id.as_u64() as usize;
@@ -1343,22 +1452,20 @@ pub fn render(
             let lift = slot.lifted;
             let on_close = cx.listener(move |this, _: &ClickEvent, window, cx| this.later(window, cx, move |pane, window, cx| pane.close_id(id, window, cx)));
 
-            // The dirty dot gives way to the close button as the pointer comes over the tab, and back.
-            // A pinned tab has a pin where the close button is: it shows at rest, and with a dirty
-            // dot the dot shows at rest and the pin as the pointer comes over. Pinning or unpinning
-            // crossfades the pin and the close button over FADE_QUICK, each drawn at its level.
+            // The file's symbol stands in the slot at the left and gives way to the close button under the pointer; a pinned tab
+            // keeps its symbol, since it has no close button. After the title, the mark's slot shows the warning, else the lock,
+            // else the dot, else the pin. Pinning, unpinning and each mark crossfade over FADE_QUICK, each drawn at its level.
             let (mark_level, corner_level, share_levels, pin_level, breath) = (slot.mark_level, slot.corner_level * slot.breath, slot.share_levels, slot.pin_level, slot.breath);
             let settle = slot.settle.as_ref().map(|settle| (settle.ok, settle.u));
-            // The selected tab rests a faint close button in the slot instead of its icon, as it is selected (`lit`); a dot or lock keeps the slot at rest.
-            let (slot_lit, faint) = (slot.lit, slot.lit * (1. - mark_level));
             let close_ink = Ink { rest: text, lit: primary, wash: foreground };
             // The file's symbol is the explorer's, tinted by the tab's ink: always from the primary colour (one bitmap per colour) with the tab's alpha. An Untitled page has no name, which the explorer draws as the plain text symbol.
             let icon_name = if path.is_some() { title.to_string() } else { String::new() };
             let icon_ink = Hsla { a: text.a, ..primary };
             // A saved file's tab hands its file out when its icon slot is dragged; an Untitled page or a deleted file has none to hand.
             let has_file = path.is_some() && !gone;
-            let (close_pane, pin_pane) = (cx.weak_entity(), cx.weak_entity());
+            let (close_pane, icon_pane) = (cx.weak_entity(), cx.weak_entity());
             let close = by_hover(("tab", key), move |over| {
+                let closable = over.min(1.) * (1. - pin_level);
                 // The hit is `TAB_CLOSE_HIT` square, laid out over the slot and out each side of it, so the title stays where it is.
                 let out = (TAB_CLOSE_HIT - TAB_CLOSE_SLOT) / 2.;
                 let button = div()
@@ -1366,7 +1473,7 @@ pub fn render(
                     .top(-out)
                     .left(-out)
                     .size(TAB_CLOSE_HIT)
-                    .opacity((over.min(1.) + (1. - over.min(1.)) * faint * TAB_CLOSE_REST_ALPHA) * (1. - pin_level))
+                    .opacity(closable)
                     .child(
                         icon_button(("tab-close", key), "xmark", TAB_CLOSE_HIT, TAB_CLOSE_SYMBOL, close_ink)
                             // A press here is the close button's, not the tab's.
@@ -1376,48 +1483,49 @@ pub fn render(
                             .when(has_file, |close| file_drag(close, id, close_pane)),
                     )
                     .children((!leaving).then(|| rect_here(format!("tab-close:{}", ix + 1))).flatten());
-                let pin = div()
-                    .id(("tab-pin", key))
-                    .absolute()
-                    .inset_0()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .opacity(pin_level * (1. - mark_level * (1. - over)))
-                    .child(symbols::icon("pin.fill", TAB_CLOSE_SYMBOL))
-                    .when(has_file, |pin| file_drag(pin, id, pin_pane));
-                // The file's symbol stands in the slot at rest, and gives way to the pin, a dot or lock, and the close button.
                 let icon = div()
+                    .id(("tab-icon", key))
                     .absolute()
                     .inset_0()
                     .flex()
                     .items_center()
                     .justify_center()
-                    .opacity((1. - pin_level) * (1. - mark_level) * (1. - over.min(1.)) * (1. - slot_lit))
-                    .child(icons::file(&icon_name, TAB_ICON, icon_ink));
+                    .opacity(1. - closable)
+                    .child(icons::file(&icon_name, TAB_ICON, icon_ink))
+                    .when(has_file, |icon| file_drag(icon, id, icon_pane));
+                div().relative().size(TAB_CLOSE_SLOT).flex_none().child(icon).when(pin_level < 1., |slot| slot.child(button))
+            });
+            // The mark's slot opens with the tab's width (`Slot::trail`); what it shows is drawn whole at its left and clipped while it opens.
+            let trail = (slot.trail > 0.).then(|| {
+                let marks = Sign::ALL.into_iter().filter(|sign| mark_level > 0. && share_levels[sign.ix()] > 0.).map(|sign| {
+                    let mark = match (sign, settle) {
+                        // A save shrinks the dot past nothing on the overshoot; a failed one swells it once, in the warning color.
+                        (Sign::Dot, Some((ok, u))) => {
+                            let (scale, ink) = if ok { ((1. - overshoot(u)).max(0.), text) } else { (1. + SAVE_SWELL * swell(u), mix(text, warning, swell(u).min(1.))) };
+                            div().size(DOT * scale).rounded_full().bg(ink).into_any_element()
+                        }
+                        _ => sign_mark(sign, warning, text, corner_level),
+                    };
+                    let ink_level = if sign == Sign::Dot { breath } else { 1. };
+                    div().absolute().inset_0().flex().items_center().justify_center().opacity(mark_level * ink_level * share_levels[sign.ix()]).child(mark)
+                });
+                let pin = (pin_level > 0.).then(|| {
+                    div()
+                        .absolute()
+                        .inset_0()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .text_color(pin_ink)
+                        .opacity(pin_level * (1. - mark_level))
+                        .child(symbols::icon("pin.fill", TAB_CLOSE_SYMBOL))
+                });
                 div()
-                    .relative()
-                    .size(TAB_CLOSE_SLOT)
                     .flex_none()
-                    .child(icon)
-                    .when(mark_level > 0., |slot| {
-                        // The slot shows the warning sign, else the lock, else the dot; the close button replaces any of them under the pointer.
-                        // Signs that changed while marked crossfade, each stacked in the slot at the level it is drawn.
-                        Sign::ALL.into_iter().filter(|sign| share_levels[sign.ix()] > 0.).fold(slot, |slot, sign| {
-                            let mark = match (sign, settle) {
-                                // A save shrinks the dot past nothing on the overshoot; a failed one swells it once, in the warning color.
-                                (Sign::Dot, Some((ok, u))) => {
-                                    let (scale, ink) = if ok { ((1. - overshoot(u)).max(0.), text) } else { (1. + SAVE_SWELL * swell(u), mix(text, warning, swell(u).min(1.))) };
-                                    div().size(DOT * scale).rounded_full().bg(ink).into_any_element()
-                                }
-                                _ => sign_mark(sign, warning, text, corner_level),
-                            };
-                            let ink_level = if sign == Sign::Dot { breath } else { 1. };
-                            slot.child(div().absolute().inset_0().flex().items_center().justify_center().opacity(mark_level * ink_level * (1. - over) * share_levels[sign.ix()]).child(mark))
-                        })
-                    })
-                    .when(pin_level < 1., |slot| slot.child(button))
-                    .when(pin_level > 0., |slot| slot.child(pin))
+                    .w(TAB_TRAIL_SLOT * slot.trail)
+                    .h(TAB_CLOSE_SLOT)
+                    .overflow_hidden()
+                    .child(div().relative().w(TAB_TRAIL_SLOT).h_full().children(marks).children(pin))
             });
 
             let tab = div()
@@ -1426,9 +1534,10 @@ pub fn render(
                 .fade_hover(("tab", key), None, Hsla { a: if is_active { 0. } else { hover_alpha }, ..foreground })
                 .relative()
                 .flex_none()
-                .w(tab_width)
+                .w(px(slot.w))
                 .h(TAB_HEIGHT)
-                .px(TAB_PAD_X)
+                .pl(TAB_PAD_LEAD)
+                .pr(TAB_PAD_TRAIL)
                 .flex()
                 .items_center()
                 .rounded(RADIUS_TAB)
@@ -1467,7 +1576,7 @@ pub fn render(
                     )
                     .on_mouse_down(MouseButton::Right, cx.listener(move |this, _, window, cx| this.show_tab_menu(id, window, cx)))
                     .on_drag(TabDrag::new(id, pinned), move |drag, grab, window, cx| {
-                        let width = lifted.borrow().get(ix).map_or(TAB_MIN_WIDTH, |bounds| bounds.size.width);
+                        let width = lifted.borrow().get(ix).map_or(TAB_DROP_ROOM, |bounds| bounds.size.width);
                         let lifted_at = crate::motion::drawn_now(window.window_handle().window_id());
                         drag.grab.set(grab);
                         drag.width.set(width);
@@ -1475,7 +1584,7 @@ pub fn render(
                         cx.new(|_| Ghost { label: ghost_label.clone(), width, lifted_at: Some(lifted_at) })
                     })
                 })
-                // The slot at the left holds the file's symbol, which the pin, the dot or lock and the close button take over; an empty slot as wide balances it at the right, so the title sits centered between them.
+                // The slot at the left holds the file's symbol, which the close button takes over; the title follows, left-aligned, then the mark's slot.
                 .child(close)
                 .child({
                     // A renamed tab's old title fades out over the new one as it fades in, drifting the way a switch does.
@@ -1500,7 +1609,7 @@ pub fn render(
                         div().flex_1().min_w_0().relative().flex().child(new).children(old).children((!leaving).then(|| rect_here(format!("tab-title:{}", ix + 1))).flatten())
                     })
                 })
-                .child(div().size(TAB_CLOSE_SLOT).flex_none())
+                .children(trail)
                 .when(!leaving, |tab| {
                     tab.child(
                         canvas(
@@ -1519,30 +1628,12 @@ pub fn render(
                     )
                 });
 
-            // A soft line in the gap after the tab, gone beside the active tab and the one under the
-            // pointer, on the eases of both.
-            let separator = motion.slots.get(slot_ix + 1).map(|next| {
-                let next_key = next.label.id.as_u64() as usize;
-                let rest = (1. - slot.lit) * (1. - slot.lifted) * (1. - next.lit) * (1. - next.lifted) * fade;
-                by_hover(("tab", next_key), move |next_over| {
-                    by_hover(("tab", key), move |over| {
-                        let alpha = ALPHA_HAIRLINE * rest * (1. - over.min(1.)) * (1. - next_over.min(1.));
-                        div()
-                            .absolute()
-                            .right_0()
-                            .top((TAB_HEIGHT - TAB_SEPARATOR_HEIGHT) / 2.)
-                            .w(px(gap))
-                            .h(TAB_SEPARATOR_HEIGHT)
-                            .child(theme::hairline(Hsla { a: alpha, ..foreground }, true).size_full())
-                    })
-                })
-            });
-
             // The slot is as wide as the tab has arrived; the tab keeps its width and is clipped.
-            let place = div().flex_none().h(TAB_HEIGHT).w(px(slot.level * motion.unit)).overflow_hidden().relative().left(px(offset)).child(tab).children(separator);
+            let unit = slot.level * (slot.w + gap);
+            let place = div().flex_none().h(TAB_HEIGHT).w(px(unit)).overflow_hidden().relative().left(px(offset)).child(tab);
             if pinned {
                 stuck.push(place);
-                div().flex_none().h(TAB_HEIGHT).w(px(slot.level * motion.unit))
+                div().flex_none().h(TAB_HEIGHT).w(px(unit))
             } else {
                 place
             }
@@ -1551,32 +1642,49 @@ pub fn render(
     // The gap is empty room in the row, before the live tab it sits before.
     if let Some(room) = &motion.gap {
         let at = motion.slots.iter().enumerate().filter(|(_, slot)| !slot.leaving).nth(room.at).map_or(motion.slots.len(), |(ix, _)| ix);
-        tabs.insert(at, div().flex_none().h(TAB_HEIGHT).w(px(room.level * motion.unit)));
+        tabs.insert(at, div().flex_none().h(TAB_HEIGHT).w(px(room.level * (f32::from(TAB_DROP_ROOM) + gap))));
     }
 
-    // The mark is the strip's first child, behind the tabs.
+    // The mark is the strip's first child, behind the tabs: a plate the active tab stands on, with a contact shadow and a rim,
+    // and on a dark theme a lit top, the float plane's depth at tab size. On a light theme it is white on the grey band. Out
+    // of key the shadow and lit top ease down to `TAB_PLATE_UNFOCUSED` with `key`, and on a dark theme the fill with them.
+    let flat = TAB_PLATE_UNFOCUSED + (1. - TAB_PLATE_UNFOCUSED) * key;
+    let show = 1. - motion.hidden;
     let mark_shape = || {
-        div().absolute().top_0().h(TAB_HEIGHT).rounded(RADIUS_TAB).bg(Hsla { a: selected_alpha * (1. - motion.hidden), ..foreground }).left(px(motion.mark.at[0])).w(px(if motion.mark.live {
-            motion.mark.at[1]
-        } else {
-            0.
-        }))
+        let fill = if light { gpui_kit::white().opacity(show) } else { Hsla { a: selected_alpha * show, ..foreground } };
+        let ([shadow, drop, blur], rim) = if light { (TAB_PLATE_SHADOW_LIGHT, TAB_PLATE_RIM_LIGHT) } else { (TAB_PLATE_SHADOW, TAB_PLATE_RIM) };
+        let shadows = vec![
+            BoxShadow { color: gpui_kit::black().opacity(shadow * flat * show), offset: point(px(0.), px(drop)), blur_radius: px(blur), spread_radius: px(0.), inset: false },
+            BoxShadow { color: gpui_kit::black().opacity(rim * show), offset: point(px(0.), px(0.)), blur_radius: px(0.), spread_radius: px(0.5), inset: false },
+        ];
+        div()
+            .absolute()
+            .top(TAB_PLATE_ROOM)
+            .h(TAB_HEIGHT)
+            .rounded(RADIUS_TAB)
+            .bg(fill)
+            .shadow(shadows)
+            .left(px(motion.mark.at[0]))
+            .w(px(if motion.mark.live { motion.mark.at[1] } else { 0. }))
+            .children((!light && motion.mark.live).then(|| tooltip::top_highlight(f32::from(RADIUS_TAB)).opacity(flat * show)))
     };
     let mark = mark_shape();
     // The pinned tabs' layer sits `held` points in from the strip's content, which is how far the strip is scrolled, so they stay where they are
     // while the rest scroll under it. Once scrolled it is opaque, with its own copy of the mark (the strip's is under it).
     let held = (-f32::from(scroll.offset().x)).max(0.);
-    let pinned_width: f32 = if stuck.is_empty() { 0. } else { motion.slots.iter().filter(|slot| slot.label.pinned).map(|slot| slot.level * motion.unit).sum() };
+    let pinned_width: f32 = if stuck.is_empty() { 0. } else { motion.slots.iter().filter(|slot| slot.label.pinned).map(|slot| slot.level * (slot.w + gap)).sum() };
+    let band_ground = crate::tokens::tab_band_ground(light);
     let pinned_layer = (!stuck.is_empty()).then(|| {
         div()
             .absolute()
             .top_0()
             .left(px(held))
             .w(px(pinned_width))
-            .h(TAB_HEIGHT)
+            .h(TAB_HEIGHT + TAB_PLATE_ROOM * 2.)
+            .py(TAB_PLATE_ROOM)
             .flex()
             .overflow_hidden()
-            .when(held > 0., |layer| layer.bg(crate::tokens::chrome_ground(light)).child(mark_shape()))
+            .when(held > 0., |layer| layer.bg(band_ground).child(mark_shape()))
             .children(stuck)
     });
 
@@ -1627,8 +1735,8 @@ pub fn render(
     .size_full();
 
     // The strip fades into the band where more tabs lie past its end, instead of clipping them hard.
-    let (fade_scroll, ground) = (scroll.clone(), crate::tokens::chrome_ground(light));
-    let one_tab = motion.unit - gap;
+    let (fade_scroll, ground) = (scroll.clone(), band_ground);
+    let one_tab = motion.slots.iter().filter(|slot| !slot.leaving).map(|slot| slot.w).fold(0., f32::max);
     let edges = canvas(
         move |_, _, _| (),
         move |_, (), window, _| {
@@ -1686,6 +1794,8 @@ pub fn render(
         .pl(left_inset)
         // Room for the window's preview button at the right edge only where it sits over this bar.
         .pr(right)
+        // A light theme's band is a step under the page, so the active tab's white plate reads on it.
+        .when(light, |bar| bar.bg(band_ground))
         .children(crate::control::fresh("tab-list"))
         .child(
             div()
@@ -1696,6 +1806,8 @@ pub fn render(
                 .min_w_0()
                 .overflow_x_scroll()
                 .track_scroll(scroll)
+                // Room for the plate's shadow and rim inside the scroll's clip.
+                .py(TAB_PLATE_ROOM)
                 // The hand wins: a wheel or trackpad scroll stops a glide at once, and the badge on the tab list button follows the view it lands in.
                 .on_scroll(cx.listener(|this, _, _, cx| {
                     this.hand_scrolled();
@@ -1933,6 +2045,13 @@ mod tests {
         (1..=count).map(|n| super::TabLabel { id: page(n), title: format!("{n}.txt").into(), ..label(false, false) }).collect()
     }
 
+    /// Gives every tab `natural` points of content, as `Motion::measure` would with a window to shape titles in.
+    fn fit_tabs(motion: &mut super::Motion, natural: f32) {
+        for slot in &mut motion.slots {
+            (slot.natural, slot.measured) = (natural, true);
+        }
+    }
+
     #[test]
     fn a_shrinking_window_lays_the_tabs_in_this_frames_width() {
         use std::time::Instant;
@@ -1958,7 +2077,8 @@ mod tests {
     fn a_strip_that_gets_narrower_brings_the_active_tab_back_into_view() {
         let mut motion = super::Motion::default();
         motion.sync(labels(20), 13);
-        // 20 tabs of 150 in a strip 1200 wide, drawn 1100 in: the 14th tab (1950 to 2098) lies clear of both fades.
+        fit_tabs(&mut motion, 146.);
+        // 20 tabs of 146 (150 with the gap) in a strip 1200 wide, drawn 1100 in: the 14th tab (1950 to 2096) lies clear of both fades.
         motion.fit(1400.);
         motion.width.set(1200.);
         motion.fit(1400.);
@@ -1966,12 +2086,12 @@ mod tests {
         // A window 300 narrower takes the tab out from under the strip's right edge; the strip asks for it back.
         motion.fit(1100.);
         assert_eq!(motion.width.get(), 900.);
-        assert_eq!(motion.take_reveal(1100.), Some(2098. + 24. - 900.));
+        assert_eq!(motion.take_reveal(1100.), Some(2096. + 24. - 900.));
         // The same window again asks for nothing, and a window that grows leaves the strip where it is.
         motion.fit(1100.);
-        assert_eq!(motion.take_reveal(1222.), None);
+        assert_eq!(motion.take_reveal(1220.), None);
         motion.fit(1400.);
-        assert_eq!(motion.take_reveal(1222.), None);
+        assert_eq!(motion.take_reveal(1220.), None);
         // A strip the width canvas found narrower than the layout used asks too.
         motion.shrunk.set(true);
         motion.fit(1400.);
@@ -1979,19 +2099,24 @@ mod tests {
     }
 
     #[test]
-    fn a_strip_narrower_than_a_tab_shrinks_the_tab_to_it_and_reveals_it_whole() {
-        // Room for a full tab: the usual share. Less room: the tab takes the room, but never goes under the floor.
-        assert_eq!(super::share(1200., 3.), 200. + 2.);
-        assert_eq!(super::share(130., 3.), 130.);
-        assert_eq!(super::share(40., 3.), f32::from(crate::tokens::TAB_FLOOR_WIDTH) + 2.);
-        // A strip 120 wide with three tabs: each tab is 118 wide (120 with its gap), and the third comes into view with its edges 1 point clear.
+    fn a_tab_fits_its_content_and_a_narrow_strip_shrinks_it_to_the_room_and_reveals_it_whole() {
+        // A tab is as wide as its content, the mark's slot added while it has one, up to the most a tab is.
+        assert_eq!(super::wanted_width(150., 0.), 150.);
+        assert_eq!(super::wanted_width(150., 1.), 150. + f32::from(crate::tokens::TAB_TRAIL_SLOT));
+        assert_eq!(super::wanted_width(400., 1.), f32::from(crate::tokens::TAB_MAX_WIDTH));
+        // Room for it: its own width. Less room: the room, but never under the floor, and a tab narrower than the floor keeps its own.
+        assert_eq!(super::fitted_width(150., 1200.), 150.);
+        assert_eq!(super::fitted_width(150., 130.), 130.);
+        assert_eq!(super::fitted_width(150., 40.), f32::from(crate::tokens::TAB_FLOOR_WIDTH));
+        assert_eq!(super::fitted_width(90., 40.), 90.);
+        // A strip 120 wide with three unmeasured tabs (120 each): each is fitted to 116 (120 with its gap), and the third comes into view with its edges 2 points clear.
         let mut motion = super::Motion::default();
         motion.sync(labels(3), 2);
         motion.fit(300.);
         motion.width.set(120.);
         motion.fit(300.);
         motion.reveal();
-        assert_eq!(motion.take_reveal(0.), Some(239.));
+        assert_eq!(motion.take_reveal(0.), Some(238.));
     }
 
     #[test]

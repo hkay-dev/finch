@@ -1330,7 +1330,7 @@ impl Pane {
     /// The label and width the lifted-tab ghost of tab `id` draws with (the control socket's `drag-hold`).
     pub fn ghost_look(&self, id: EntityId, cx: &App) -> Option<(TabLabel, Pixels)> {
         let ix = self.index_of(id)?;
-        let width = self.bounds.borrow().get(ix).map_or(crate::tokens::TAB_MIN_WIDTH, |bounds| bounds.size.width);
+        let width = self.bounds.borrow().get(ix).map_or(crate::tokens::TAB_DROP_ROOM, |bounds| bounds.size.width);
         let label = self.motion.label_of(id).cloned().unwrap_or_else(|| {
             let (document, tab) = (self.tabs[ix].document.read(cx), &self.tabs[ix]);
             TabLabel {
@@ -1552,6 +1552,7 @@ impl Render for Pane {
             let labels = self.build_labels(cx);
             self.motion.sync(labels, self.active);
         }
+        self.motion.measure(window, cx);
         self.motion.fit(f32::from(window.viewport_size().width));
         let hairline = cx.theme().border;
         // One device pixel, laid on the grid: the top band is whole points, so its bottom edge is.
@@ -1618,8 +1619,9 @@ impl Render for Pane {
             // keyboard where it is; the tabs and the workspace move it themselves.
             .on_mouse_down(MouseButton::Left, |_, window, _| window.prevent_default())
             .size_full()
-            .children(hairline)
             .child(bar)
+            // Over the bar, whose band is painted on a light theme.
+            .children(hairline)
     }
 }
 
