@@ -1,4 +1,10 @@
-# Finch
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme-header-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/assets/readme-header-light.png">
+    <img alt="Finch, a small, fast text editor for the Mac" src="docs/assets/readme-header-light.png">
+  </picture>
+</p>
 
 Finch is a small, fast text editor for the Mac, written in Rust on [GPUI](https://github.com/zed-industries/zed/tree/main/crates/gpui). It opens files in tabs with a folder tree on the left and a live Markdown preview on the right, and it keeps every Untitled page as a draft on disk, so nothing you type is lost.
 
