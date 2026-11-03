@@ -429,32 +429,25 @@ impl<M: crate::input::overlay::OverlayMode> SearchPanel<M> {
                 state.focus(window, cx);
             }
         });
-        // A bar that was showing stays drawn for its exit, then the editor draws without it.
-        if std::mem::replace(&mut self.shown, false) {
-            let exit = cx
-                .try_global::<FindBarRenderer>()
-                .map_or(std::time::Duration::ZERO, |r| r.exit);
-            if !exit.is_zero() {
-                self.exiting = true;
-                cx.spawn(async move |this, cx| {
-                    cx.background_executor().timer(exit).await;
-                    let _ = this.update(cx, |this, cx| {
-                        if !this.shown {
-                            this.exiting = false;
-                            this.session.matcher = Default::default();
-                            this.clear_cover(cx);
-                            let _ = this.editor.update(cx, |_, cx| cx.notify());
-                            cx.notify();
-                        }
-                    });
-                })
-                .detach();
-            } else {
-                self.clear_cover(cx);
-            }
+        // A bar that was showing stays drawn for its exit, until it says it's gone (`end_exit`).
+        if std::mem::replace(&mut self.shown, false) && cx.has_global::<FindBarRenderer>() {
+            self.exiting = true;
         } else {
             self.clear_cover(cx);
         }
+        cx.notify();
+    }
+
+    /// The leaving bar draws nothing more: the editor draws without it, and the carets, chips
+    /// and ticks it covered show again in the same frame.
+    fn end_exit(&mut self, cx: &mut Context<Self>) {
+        if !self.exiting || self.shown {
+            return;
+        }
+        self.exiting = false;
+        self.session.matcher = Default::default();
+        self.clear_cover(cx);
+        let _ = self.editor.update(cx, |_, cx| cx.notify());
         cx.notify();
     }
     /// The bar no longer draws, so the carets it covered show again.
@@ -845,6 +838,12 @@ impl<M: crate::input::overlay::OverlayMode> Render for SearchPanel<M> {
                     }
                 })
             },
+            gone: leaving.then(|| {
+                let panel = panel.clone();
+                Rc::new(move |cx: &mut App| {
+                    let _ = panel.update(cx, |this, cx| this.end_exit(cx));
+                }) as Rc<dyn Fn(&mut App)>
+            }),
             act: Rc::new(move |control, window, cx| {
                 let _ = panel.update(cx, |this, cx| this.control(control, window, cx));
             }),

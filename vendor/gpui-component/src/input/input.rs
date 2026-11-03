@@ -598,20 +598,23 @@ pub struct FindBar {
     pub wrap_forward: bool,
     /// How many times Find next or previous found no match.
     pub misses: u32,
-    /// The bar was closed and is still drawn for `FindBarRenderer::exit`.
+    /// The bar was closed and is still drawn for its exit, until it calls `gone`.
     pub leaving: bool,
     pub act: Rc<dyn Fn(FindControl, &mut Window, &mut App)>,
     /// Reports the bar's bounds to the editor so its caret doesn't paint over the bar; the bar
     /// calls it each frame it draws.
     pub cover: Rc<dyn Fn(Option<gpui::Bounds<gpui::Pixels>>, &mut App)>,
+    /// Set while the bar is leaving. The bar calls it once it draws nothing more (before the
+    /// frame that would draw it gone, so that frame shows the editor without it): the panel
+    /// stops drawing it and the carets it covered show again.
+    pub gone: Option<Rc<dyn Fn(&mut App)>>,
 }
 
 /// The app's drawing of the find bar, set once as a global. It returns the bar positioned in
-/// the editor's top right; the editor draws it over the text. `exit` is how long a closed bar
-/// stays drawn for its exit.
+/// the editor's top right; the editor draws it over the text. A closed bar stays drawn until it
+/// calls `FindBar::gone`.
 pub struct FindBarRenderer {
     pub render: fn(FindBar, &mut Window, &mut App) -> AnyElement,
-    pub exit: std::time::Duration,
 }
 
 impl gpui::Global for FindBarRenderer {}

@@ -9,7 +9,7 @@
 //! rises into place over `OVERLAY_ENTER` on the expo-out curve and fades out over `OVERLAY_EXIT` on
 //! the ease-in; closing and reopening mid-flight turns around from where the bar is drawn.
 
-use std::{rc::Rc, time::{Duration, Instant}};
+use std::{rc::Rc, time::Instant};
 
 use gpui_kit::component::ActiveTheme as _;
 use gpui_kit::prelude::FluentBuilder as _;
@@ -34,7 +34,7 @@ use crate::{
 /// Hands the editor this bar to draw its search with, once.
 pub fn ensure(cx: &mut App) {
     if !cx.has_global::<FindBarRenderer>() {
-        cx.set_global(FindBarRenderer { render, exit: Duration::from_secs_f32(OVERLAY_EXIT) });
+        cx.set_global(FindBarRenderer { render });
     }
 }
 
@@ -55,18 +55,21 @@ impl Reveal {
             if t >= 1. { (1., false) } else { (self.from + (1. - self.from) * crate::motion::expo_out(t), true) }
         } else {
             let t = secs / OVERLAY_EXIT;
-            if t >= 1. { (0., false) } else { (self.from * (1. - crate::motion::ease_in(t)), true) }
+            if t >= 1. || self.from <= 0. { (0., false) } else { (self.from * (1. - crate::motion::ease_in(t)), true) }
         }
     }
 }
 
 /// The bar's level now. It turns toward the new direction from the level it was drawn at, and
 /// asks for frames only while it moves. The state lives while the bar is drawn, so a bar that
-/// opens fresh starts at 0.
-fn reveal(key: usize, leaving: bool, window: &mut Window, cx: &mut App) -> f32 {
-    let now = crate::motion::drawn_now(window.window_handle().window_id());
-    let state = window.use_keyed_state(("find-reveal", key), cx, |_, _| Reveal { from: if leaving { 1. } else { 0. }, open: !leaving, since: now });
-    let turned = state.update(cx, |reveal, _| {
+/// opens fresh starts at 0, and one first drawn leaving (its pane was hidden mid-exit) is gone.
+/// A leaving bar's next frame checks, before it draws, whether it would draw the bar at 0, and
+/// then calls `gone` instead: the frame that takes the bar away is the last one it causes.
+fn reveal(key: usize, leaving: bool, gone: Option<&Rc<dyn Fn(&mut App)>>, window: &mut Window, cx: &mut App) -> f32 {
+    let id = window.window_handle().window_id();
+    let now = crate::motion::drawn_now(id);
+    let state = window.use_keyed_state(("find-reveal", key), cx, |_, _| Reveal { from: 0., open: !leaving, since: now });
+    let (level, moving) = state.update(cx, |reveal, _| {
         if reveal.open == leaving {
             reveal.from = reveal.level(now).0;
             reveal.open = !leaving;
@@ -74,10 +77,18 @@ fn reveal(key: usize, leaving: bool, window: &mut Window, cx: &mut App) -> f32 {
         }
         reveal.level(now)
     });
-    if turned.1 {
-        window.request_animation_frame();
+    if moving {
+        match gone {
+            Some(gone) => {
+                let (gone, view) = (gone.clone(), window.current_view());
+                window.on_next_frame(move |_, cx| {
+                    if state.read(cx).level(crate::motion::next_now(id)) == (0., false) { gone(cx) } else { cx.notify(view) }
+                });
+            }
+            None => window.request_animation_frame(),
+        }
     }
-    turned.0
+    level
 }
 
 /// How far the no-match state shows, 0 (matches) to 1 (none): the dimmed controls and the count's
@@ -393,6 +404,14 @@ fn render(bar: FindBar, window: &mut Window, cx: &mut App) -> AnyElement {
 
     // Ids carry the search entity, so two panes' bars never share a hover fade.
     let key = bar.search.entity_id().as_u64() as usize;
+    let level = reveal(key, bar.leaving, bar.gone.as_ref(), window, cx);
+    if bar.leaving && level == 0. {
+        // Already at 0 when drawn (a frame that came a hair early, or a pane shown again mid-exit).
+        if let Some(gone) = bar.gone.clone() {
+            cx.defer(move |cx| gone(cx));
+        }
+        return Empty.into_any_element();
+    }
     crate::control::name_field("find", bar.search.focus_handle(cx));
     if let Some(replace) = &bar.replace {
         crate::control::name_field("replace", replace.focus_handle(cx));
@@ -581,7 +600,6 @@ fn render(bar: FindBar, window: &mut Window, cx: &mut App) -> AnyElement {
 
     // The bar's place is a margin, so its rise and fade move only the margin and the paint. The
     // panel around it spans the editor and pushes it right, so a narrow pane shrinks the bar.
-    let level = reveal(key, bar.leaving, window, cx);
     let place = div().min_w_0().mt(FIND_INSET_TOP + px(OVERLAY_ENTER_RISE * (1. - level))).mr(FIND_INSET_RIGHT).opacity(level).child(body);
     if bar.leaving {
         // A leaving bar takes no clicks and no focus: a cover over it eats them until it is gone.

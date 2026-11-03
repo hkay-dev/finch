@@ -19,7 +19,7 @@ use crate::tokens::{ARRIVE, COLUMN_FADE_LEAD, COLUMN_LAND, COLUMN_SLIDE, EQUALIZ
 /// uneven steps even when the frames are evenly spaced. This clock follows the frames' rhythm
 /// instead: each frame advances it by the learned frame period, nudged toward the real elapsed time,
 /// so it keeps pace with the display without its jitter.
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub struct FrameClock {
     /// The clock's last reading and the real time it was asked at.
     last: Option<(Instant, Instant)>,
@@ -125,6 +125,13 @@ pub fn drawn_now(window: WindowId) -> Instant {
         Some((asked, read)) if real.saturating_duration_since(asked).as_secs_f32() <= FrameClock::MAX_GAP => read,
         _ => real,
     })
+}
+
+/// The reading the frame about to draw in `window` will take (`frame_now` at the top of its
+/// render), without advancing the clock: for a next-frame callback that decides before the draw.
+pub fn next_now(window: WindowId) -> Instant {
+    let real = Instant::now();
+    SHARED.with_borrow(|all| all.get(&window).map_or(real, |shared| { let mut clock = shared.clock; clock.at(real) }))
 }
 
 /// Drops a closed window's clock.

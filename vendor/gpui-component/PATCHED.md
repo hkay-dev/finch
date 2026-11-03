@@ -227,3 +227,7 @@ The same menu's `handle_action` no longer calls `cx.propagate()` for the keys it
 ## Ignore diacritics button and bar width (finch#8rmd)
 
 `src/input/input.rs`, `search.rs`: `FindControl::IgnoreDiacritics` flips `set_search_ignore_diacritics`, so the app's find bar can draw and press an Ignore diacritics toggle; `FindBar::ignore_diacritics` hands the option's state to the bar. `FindBar::width` is the editor's `input_bounds()` width from the last layout (10,000 before the first), so the app's bar can drop option buttons that don't fit a narrow pane. One read per bar draw, no allocation.
+
+## The find bar ends its own exit (finch#x0kj)
+
+`src/input/input.rs`, `search.rs`: `FindBarRenderer::exit` and the panel's exit timer are gone. A closed bar is drawn (`FindBar::leaving`) until the app's bar calls `FindBar::gone` (set only while leaving, so an open bar allocates nothing for it); `SearchPanel::end_exit` then drops the kept matcher and the caret cover and notifies the editor. The app calls it from a next-frame callback before the frame that would draw the bar at 0, so that frame takes the bar away and shows what it covered, with no frame after it.
