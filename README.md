@@ -95,6 +95,14 @@ scripts/bundle.sh
 
 It builds a release and writes `target/release/Finch.app`. The bundle is signed with the identity in `FINCH_SIGN_IDENTITY`, or the first line of `~/.config/finch/sign-identity`, and ad hoc when neither is set. An ad hoc build runs on the Mac that built it.
 
+To make a disk image for a release download:
+
+```sh
+scripts/dmg.sh
+```
+
+It writes `target/release/Finch-<version>.dmg` (about 13 MB), with the app beside a shortcut to Applications. The app in it is signed ad hoc unless `FINCH_SIGN_IDENTITY` names a certificate, and it isn't notarized, so on another Mac the first open is blocked: open it from System Settings > Privacy & Security > Open Anyway.
+
 There are no prebuilt downloads yet.
 
 ## Settings and files

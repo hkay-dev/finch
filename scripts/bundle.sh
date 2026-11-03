@@ -16,6 +16,8 @@ exe="finch"
 target="${CARGO_TARGET_DIR:-$root/target}"
 app="$target/release/$name.app"
 version="$(git rev-parse --short=9 HEAD 2>/dev/null || echo 0)"
+# The version people see (About Finch, the DMG's name) is Cargo.toml's.
+release="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)"
 
 echo "bundle: building $name with cargo build --release"
 cargo build --release
@@ -51,7 +53,7 @@ cat >"$app/Contents/Info.plist" <<PLIST
     <key>CFBundleName</key><string>$name</string>
     <key>CFBundlePackageType</key><string>APPL</string>
 $icon_keys
-    <key>CFBundleShortVersionString</key><string>1.0</string>
+    <key>CFBundleShortVersionString</key><string>${release:-0}</string>
     <key>CFBundleVersion</key><string>$version</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>NSHighResolutionCapable</key><true/>
