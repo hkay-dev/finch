@@ -6,7 +6,7 @@
   </picture>
 </p>
 
-Finch is a small, fast text editor for the Mac, written in Rust on [GPUI](https://github.com/zed-industries/zed/tree/main/crates/gpui). It opens files in tabs with a folder tree on the left and a live Markdown preview on the right, and it keeps every Untitled page as a draft on disk, so nothing you type is lost.
+Finch is a small, fast text editor for the Mac, written in Rust on [GPUI](https://github.com/zed-industries/zed/tree/main/crates/gpui). It opens files in tabs with a folder tree on the left and a live Markdown preview on the right.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme-dark.png">
@@ -14,13 +14,13 @@ Finch is a small, fast text editor for the Mac, written in Rust on [GPUI](https:
   <img alt="Finch with a folder tree, a Markdown note and its live preview" src="docs/assets/readme-dark.png">
 </picture>
 
-Finch is young (it started in October 2026) and built for one person's daily writing. Expect rough edges on setups it hasn't met yet.
+Finch started in October 2026, for my own daily writing.
 
 ## Why Finch
 
-I wanted an editor that wasn't Electron, stayed light, and wasn't a full IDE, because I don't use one anymore. I wanted a Markdown preview beside the text, the folder tree in view, and writing tools like Typewriter and Focus mode when I reach for them. That's why Finch was born.
+I wanted an editor that wasn't Electron, was light, and wasn't a full IDE, because I don't use one anymore. I wanted a Markdown preview beside the text, the folder tree in view, and writing tools like Typewriter and Focus mode when I want them. That's why Finch was born.
 
-It's an opinionated editor. It's drawn on the GPU and written in Rust on GPUI. It uses about 80 MB of memory on first launch, and the app is about 67 MB on disk. Smooth scrolling is one of its goals, and there's more work to come on it.
+It's an opinionated editor. It's GPU accelerated and written in Rust on GPUI. It uses about 80 MB of memory on first launch, and the app is about 67 MB on disk. Smooth scrolling is one of its goals, and there's more work to come on it.
 
 Finch is for writing, whether that's jotting down a quick note or editing a Markdown file, and that's all it should do. It reads and edits code files too, with code colors and a few conveniences like bracket folding, for when you need to open one and change it. It isn't meant to be a coding environment, but you're welcome to use it as one.
 
@@ -37,7 +37,6 @@ Finch is for writing, whether that's jotting down a quick note or editing a Mark
 - **Writing:** a live Markdown preview (tables, callouts, math, Mermaid), Typewriter and Focus modes, spelling and a style check.
 - **Files:** a folder tree, Open quickly, tabs and split panes.
 - **Code:** code colors for 34 languages, Find in folder, multiple cursors and folding.
-- **Your text is kept:** every Untitled page is saved as a draft, and every save keeps a copy that you can compare with.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme-code-dark.png">
@@ -45,32 +44,9 @@ Finch is for writing, whether that's jotting down a quick note or editing a Mark
   <img alt="A Rust file in Finch with its code colors" src="docs/assets/readme-code-dark.png">
 </picture>
 
-The rest is in the [user guide](docs/guide/index.md), which Finch Help (Cmd-?) opens in the app.
-
 ## Speed
 
-Finch draws its own window with the GPU, the way Zed does. Release builds on an M-series Mac draw the first frame 0.35 to 0.6 seconds after the process starts, for a 2-line file and a 50,000-line file alike. Scrolling a million-line file keeps the same frame pacing as a short one, and long lines wrap a slice at a time, so a big file never stalls the window.
-
-## Keys
-
-| Keys | What it does |
-| --- | --- |
-| Cmd-T or Cmd-N | New tab |
-| Cmd-W | Close tab |
-| Shift-Cmd-T | Reopen closed tab |
-| Cmd-1 to Cmd-9 | Show a tab |
-| Shift-Cmd-O | Open quickly |
-| Option-Cmd-O | Open a draft |
-| Cmd-F / Shift-Cmd-F | Find / Find and replace |
-| Shift-Option-Cmd-F | Find in folder |
-| Cmd-L / Control-Cmd-J | Go to line / Go to symbol |
-| Cmd-D | Select the next match |
-| Cmd-B | Show or hide the folder tree |
-| Shift-Cmd-V | Show or hide the Markdown preview |
-| Cmd-\ / Shift-Cmd-\ | Split right / Split down |
-| Control-Cmd-Return | Minimal mode |
-| Control-Option-Space | Scratch window, from any app |
-| Cmd-, | Settings |
+Finch draws its window on the GPU, like Zed. A release build on an M-series Mac draws its first frame 0.35 to 0.6 seconds after launch, whether the file has 2 lines or 50,000. A million-line file scrolls as smoothly as a short one, and long lines wrap a piece at a time.
 
 ## Build and install
 
@@ -104,13 +80,11 @@ It writes `target/release/Finch-<version>.dmg` (about 13 MB), with the app besid
 
 There are no prebuilt downloads yet.
 
-## Settings and files
+## Settings
 
-- Settings live in `~/Library/Application Support/Finch/settings.toml`, and the Settings window (Cmd-,) edits the same file.
-- Drafts of Untitled pages live in `~/Documents/Scrap Drafts`.
-- Saved copies of your files live in `~/Library/Application Support/Finch/Versions`.
+Every setting in Finch is in `~/Library/Application Support/Finch/settings.toml`. The Settings window (Cmd-,) edits the same file.
 
-The default editor font is Google Sans Code NF at 14 points. When that font isn't installed, code draws in the Mac's monospaced font instead; any installed monospaced family can be picked under Settings > Editor.
+The default editor font is [Google Sans Code NF](https://github.com/wylu1037/google-sans-code-nerd-font) at 14 points. Without it, code draws in the Mac's monospaced font, and any installed monospaced font can be picked in Settings.
 
 ## Layout
 
@@ -124,4 +98,4 @@ Tests run with `cargo test`. Comments and commit messages cite tickets like `fin
 
 ## License
 
-Finch is licensed under the [Apache License 2.0](LICENSE). The vendored code keeps its own licenses (Apache 2.0 and MIT); see [NOTICE](NOTICE).
+Finch is licensed under the [Apache License 2.0](LICENSE). The vendored code has its own licenses (Apache 2.0 and MIT); see [NOTICE](NOTICE).
