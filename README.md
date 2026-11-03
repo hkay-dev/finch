@@ -14,7 +14,23 @@ Finch is a small, fast text editor for the Mac, written in Rust on [GPUI](https:
   <img alt="Finch with a folder tree, a Markdown note and its live preview" src="docs/assets/readme-dark.png">
 </picture>
 
-Finch is young (it started in October 2026) and built for one person's daily writing and coding. Expect rough edges on setups it hasn't met yet.
+Finch is young (it started in October 2026) and built for one person's daily writing. Expect rough edges on setups it hasn't met yet.
+
+## Why Finch
+
+I wanted an editor that wasn't Electron, stayed light, and wasn't a full IDE, because I don't use one anymore. I wanted a Markdown preview beside the text, the folder tree in view, and writing tools like Typewriter and Focus mode when I reach for them. That's why Finch was born.
+
+It's an opinionated editor. It's drawn on the GPU and written in Rust on GPUI. It uses about 80 MB of memory on first launch, and the app is about 67 MB on disk. Smooth scrolling is one of its goals, and there's more work to come on it.
+
+Finch is for writing, whether that's jotting down a quick note or editing a Markdown file, and that's all it should do. It reads and edits code files too, with code colors and a few conveniences like bracket folding, for when you need to open one and change it. It isn't meant to be a coding environment, but you're welcome to use it as one.
+
+### What it'll never have
+
+- IDE features. Don't go looking for linting or tab to autocomplete.
+- A terminal. There are plenty of good ones already.
+- A plugin system. It's kept light and simple on purpose.
+- A Git client.
+- An agent chat mode.
 
 ## What it does
 
