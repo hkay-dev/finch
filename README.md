@@ -18,19 +18,17 @@ Finch started in October 2026, for my own daily writing.
 
 ## Why Finch
 
-I wanted an editor that wasn't Electron, was light, and wasn't a full IDE, because I don't use one anymore. I wanted a Markdown preview beside the text, the folder tree in view, and writing tools like Typewriter and Focus mode when I want them. That's why Finch was born.
+I wanted a light editor that wasn't Electron or an IDE, with a Markdown preview, a folder tree, and writing tools like Typewriter and Focus mode. It uses about 80 MB of memory on first launch and is about 67 MB on disk. Smooth scrolling is a goal, with more work to come.
 
-It's an opinionated editor. It's GPU accelerated and written in Rust on GPUI. It uses about 80 MB of memory on first launch, and the app is about 67 MB on disk. Smooth scrolling is one of its goals, and there's more work to come on it.
-
-Finch is for writing, whether that's jotting down a quick note or editing a Markdown file, and that's all it should do. It reads and edits code files too, with code colors and a few conveniences like bracket folding, for when you need to open one and change it. It isn't meant to be a coding environment, but you're welcome to use it as one.
+Finch is for writing notes and Markdown. It can read and edit code, but it isn't meant to be a coding environment.
 
 ### What it'll never have
 
-- IDE features. Don't go looking for linting or tab to autocomplete.
-- A terminal. There are plenty of good ones already.
-- A plugin system. It's kept light and simple on purpose.
-- A Git client.
-- An agent chat mode.
+- IDE features (linting, tab to autocomplete)
+- A terminal
+- A plugin system
+- A Git client
+- An agent chat mode
 
 ## What it does
 
